@@ -65,7 +65,7 @@ const Dashboard = () => {
             </div>
           </h1>
           <p className="text-lg text-stone-500 mt-2 font-medium">
-            冰箱里有 <span className="text-emerald-600 font-bold px-1">{ingredients.length}</span> 种食材待命，今天想创造什么美味？
+            冰箱里有 <span className="text-emerald-600 font-bold px-1">{ingredients.filter(i => i.quantity > 0).length}</span> 种食材待命，今天想创造什么美味？
           </p>
         </div>
         <div className="flex items-center gap-3">
