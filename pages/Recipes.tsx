@@ -10,7 +10,7 @@ import { recipeImportService } from '../services/recipeImport.service';
 import CookingLoader from '../components/CookingLoader';
 
 const Recipes = () => {
-  const { recipes, myRecipes, publicRecipes, categories, ingredients, addRecipe, updateRecipe, deleteRecipe, addCategory, updateCategory, deleteCategory, user, refresh, loading } = useStore();
+  const { recipes, myRecipes, publicRecipes, categories, ingredients, addRecipe, updateRecipe, deleteRecipe, addCategory, updateCategory, deleteCategory, user, refresh, loading, showToast } = useStore();
   const navigate = useNavigate();
   
   // State
@@ -29,6 +29,8 @@ const Recipes = () => {
   const [importText, setImportText] = useState('');
   const [parsedRecipes, setParsedRecipes] = useState<ParsedRecipe[]>([]);
   const [importError, setImportError] = useState('');
+  const [isImporting, setIsImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState({ current: 0, total: 0 });
 
   // --- Category Management State ---
   const [isCatModalOpen, setIsCatModalOpen] = useState(false);
@@ -75,49 +77,60 @@ const Recipes = () => {
   };
 
   // --- Import Handlers ---
-  const handleParseImport = () => {
+  const handleImportRecipes = async () => {
+    setImportError('');
+    setIsImporting(true);
+    
     try {
-      setImportError('');
+      // 先解析
       const recipes = parseRecipeMarkdown(importText);
       if (recipes.length === 0) {
         setImportError('未能解析到有效的菜谱，请检查格式是否正确');
+        setIsImporting(false);
         return;
       }
-      setParsedRecipes(recipes);
-    } catch (error) {
-      setImportError('解析失败: ' + (error as Error).message);
-    }
-  };
-
-  const handleImportRecipes = async () => {
-    setImportError('');
-    try {
-      const results = await recipeImportService.importRecipes(parsedRecipes);
+      
+      // 设置总数
+      setImportProgress({ current: 0, total: recipes.length });
+      
+      // 逐个导入并更新进度
+      const results = [];
+      for (let i = 0; i < recipes.length; i++) {
+        const result = await recipeImportService.importSingleRecipe(recipes[i]);
+        results.push(result);
+        setImportProgress({ current: i + 1, total: recipes.length });
+      }
       
       const successCount = results.filter(r => r.success).length;
       const failCount = results.filter(r => !r.success).length;
       
-      let message = `导入完成！\n成功: ${successCount} 个`;
-      if (failCount > 0) {
-        message += `\n失败: ${failCount} 个`;
-      }
-      
-      // 显示警告信息
+      // 构建详细消息
       const warnings = results.flatMap(r => r.warnings || []);
-      if (warnings.length > 0) {
-        message += '\n\n注意事项:\n' + warnings.slice(0, 5).join('\n');
-        if (warnings.length > 5) {
-          message += `\n...还有 ${warnings.length - 5} 条提示`;
-        }
-      }
-      
-      // 显示错误信息
       const errors = results.filter(r => !r.success);
-      if (errors.length > 0) {
-        message += '\n\n失败的菜谱:\n' + errors.map(e => `- ${e.recipeName}: ${e.error}`).join('\n');
+      
+      // 使用Toast显示结果
+      if (successCount > 0 && failCount === 0) {
+        showToast(`成功导入 ${successCount} 个菜谱！`, 'success', 4000);
+      } else if (successCount > 0 && failCount > 0) {
+        showToast(`导入完成：成功 ${successCount} 个，失败 ${failCount} 个`, 'warning', 5000);
+      } else {
+        showToast(`导入失败：所有 ${failCount} 个菜谱都未能导入`, 'error', 5000);
       }
       
-      alert(message);
+      // 如果有警告，显示警告信息
+      if (warnings.length > 0) {
+        const warningMsg = warnings.slice(0, 3).join('；');
+        showToast(`提示：${warningMsg}${warnings.length > 3 ? '...' : ''}`, 'info', 6000);
+      }
+      
+      // 如果有错误，显示错误详情
+      if (errors.length > 0 && errors.length <= 3) {
+        errors.forEach(e => {
+          showToast(`${e.recipeName}：${e.error}`, 'error', 5000);
+        });
+      } else if (errors.length > 3) {
+        showToast(`${errors.length} 个菜谱导入失败，请检查格式`, 'error', 5000);
+      }
       
       if (successCount > 0) {
         setView('list');
@@ -127,7 +140,12 @@ const Recipes = () => {
         await refresh();
       }
     } catch (error) {
-      setImportError('导入失败: ' + (error as Error).message);
+      const errorMsg = '解析或导入失败: ' + (error as Error).message;
+      setImportError(errorMsg);
+      showToast(errorMsg, 'error', 5000);
+    } finally {
+      setIsImporting(false);
+      setImportProgress({ current: 0, total: 0 });
     }
   };
 
@@ -271,155 +289,88 @@ const Recipes = () => {
 
   if (view === 'import') {
     return (
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex items-center gap-4">
           <Button variant="secondary" onClick={() => { setView('list'); setImportText(''); setParsedRecipes([]); setImportError(''); }}>返回</Button>
           <h1 className="text-2xl font-bold">批量导入菜谱</h1>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-6">
-          {/* 输入区 */}
-          <div className="space-y-4">
-            <GlassCard>
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="font-bold text-lg">Markdown 格式</h3>
-                <div className="flex gap-2">
-                  <a 
-                    href="https://doubao.com/bot/DxH2TNW7" 
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-1.5 rounded-lg hover:from-purple-600 hover:to-pink-600 flex items-center gap-1 transition-all"
-                  >
-                    <Sparkles size={14} />
-                    豆包快速生成
-                  </a>
-                  <a 
-                    href="/recipe-import-template.md" 
-                    download 
-                    className="text-sm text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
-                  >
-                    <FileText size={16} />
-                    下载模板
-                  </a>
-                </div>
-              </div>
-              <textarea
-                className="w-full h-96 p-4 bg-white/50 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400 font-mono text-sm"
-                placeholder="粘贴 Markdown 格式的菜谱内容..."
-                value={importText}
-                onChange={e => setImportText(e.target.value)}
-              />
-              {importError && (
-                <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
-                  {importError}
-                </div>
-              )}
-              <div className="mt-4 flex gap-2">
-                <Button onClick={handleParseImport} disabled={!importText}>
-                  解析菜谱
-                </Button>
-                <Button 
-                  variant="secondary" 
-                  onClick={() => {
-                    setImportText('');
-                    setParsedRecipes([]);
-                    setImportError('');
-                  }}
-                >
-                  清空
-                </Button>
-              </div>
-            </GlassCard>
+        <GlassCard>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="font-bold text-lg">Markdown 格式</h3>
+            <div className="flex gap-2">
+              <a 
+                href="https://doubao.com/bot/DxH2TNW7" 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-1.5 rounded-lg hover:from-purple-600 hover:to-pink-600 flex items-center gap-1 transition-all"
+              >
+                <Sparkles size={14} />
+                豆包快速生成
+              </a>
+              <a 
+                href="/recipe-import-template.md" 
+                download 
+                className="text-sm text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+              >
+                <FileText size={16} />
+                下载模板
+              </a>
+            </div>
           </div>
-
-          {/* 预览区 */}
-          <div className="space-y-4">
-            <GlassCard>
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="font-bold text-lg">
-                  解析结果 {parsedRecipes.length > 0 && `(${parsedRecipes.length} 个菜谱)`}
-                </h3>
-                {parsedRecipes.length > 0 && (
-                  <Button onClick={handleImportRecipes}>
-                    <Upload size={16} className="mr-1" />
-                    导入到系统
-                  </Button>
-                )}
+          
+          <textarea
+            className="w-full h-96 p-4 bg-white/50 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400 font-mono text-sm"
+            placeholder="粘贴 Markdown 格式的菜谱内容，点击导入按钮即可自动解析并导入..."
+            value={importText}
+            onChange={e => setImportText(e.target.value)}
+            disabled={isImporting}
+          />
+          
+          {/* 导入进度条 */}
+          {isImporting && (
+            <div className="mt-4 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-emerald-800">
+                  正在导入菜谱...
+                </span>
+                <span className="text-sm text-emerald-600">
+                  {importProgress.current} / {importProgress.total}
+                </span>
               </div>
-              
-              {parsedRecipes.length === 0 ? (
-                <div className="text-center py-12 text-stone-400">
-                  <FileText size={48} className="mx-auto mb-4 opacity-50" />
-                  <p>解析后的菜谱将显示在这里</p>
-                </div>
-              ) : (
-                <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
-                  {parsedRecipes.map((recipe, index) => (
-                    <div key={index} className="bg-white/50 p-4 rounded-xl border border-stone-200">
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <h4 className="font-bold text-lg text-stone-800">{recipe.name}</h4>
-                          <div className="flex gap-2 mt-1 text-xs text-stone-500">
-                            <span>{recipe.category}</span>
-                            <span>•</span>
-                            <span>{recipe.difficulty}星</span>
-                            {recipe.prepTime && <><span>•</span><span>准备 {recipe.prepTime}分钟</span></>}
-                            {recipe.cookTime && <><span>•</span><span>烹饪 {recipe.cookTime}分钟</span></>}
-                          </div>
-                        </div>
-                        <Badge>{recipe.ingredients.length} 食材</Badge>
-                      </div>
-                      
-                      {recipe.description && (
-                        <p className="text-sm text-stone-600 mb-3">{recipe.description}</p>
-                      )}
-                      
-                      {recipe.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mb-3">
-                          {recipe.tags.map(tag => (
-                            <span key={tag} className="text-xs bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded">
-                              #{tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <div className="font-medium text-stone-700 mb-1">食材:</div>
-                          <ul className="text-stone-600 space-y-0.5">
-                            {recipe.ingredients.slice(0, 5).map((ing, i) => (
-                              <li key={i} className="text-xs">
-                                • {ing.name} {ing.amount}{ing.unit}
-                                {ing.optional && <span className="text-stone-400"> (可选)</span>}
-                              </li>
-                            ))}
-                            {recipe.ingredients.length > 5 && (
-                              <li className="text-xs text-stone-400">...还有 {recipe.ingredients.length - 5} 个</li>
-                            )}
-                          </ul>
-                        </div>
-                        <div>
-                          <div className="font-medium text-stone-700 mb-1">步骤:</div>
-                          <ul className="text-stone-600 space-y-0.5">
-                            {recipe.steps.slice(0, 3).map((step, i) => (
-                              <li key={i} className="text-xs">
-                                {i + 1}. {step.description.substring(0, 30)}...
-                              </li>
-                            ))}
-                            {recipe.steps.length > 3 && (
-                              <li className="text-xs text-stone-400">...还有 {recipe.steps.length - 3} 步</li>
-                            )}
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </GlassCard>
+              <div className="w-full bg-emerald-100 rounded-full h-2.5 overflow-hidden">
+                <div 
+                  className="bg-emerald-500 h-2.5 rounded-full transition-all duration-300 ease-out"
+                  style={{ width: `${importProgress.total > 0 ? (importProgress.current / importProgress.total) * 100 : 0}%` }}
+                ></div>
+              </div>
+            </div>
+          )}
+          
+          {importError && !isImporting && (
+            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+              {importError}
+            </div>
+          )}
+          
+          <div className="mt-4 flex gap-2">
+            <Button onClick={handleImportRecipes} disabled={!importText || isImporting}>
+              <Upload size={16} className="mr-1" />
+              {isImporting ? '导入中...' : '导入菜谱'}
+            </Button>
+            <Button 
+              variant="secondary" 
+              onClick={() => {
+                setImportText('');
+                setParsedRecipes([]);
+                setImportError('');
+              }}
+              disabled={isImporting}
+            >
+              清空
+            </Button>
           </div>
-        </div>
+        </GlassCard>
       </div>
     );
   }
