@@ -10,7 +10,7 @@ import { recipeImportService } from '../services/recipeImport.service';
 import CookingLoader from '../components/CookingLoader';
 
 const Recipes = () => {
-  const { recipes, myRecipes, publicRecipes, categories, ingredients, addRecipe, updateRecipe, deleteRecipe, addCategory, updateCategory, deleteCategory, user } = useStore();
+  const { recipes, myRecipes, publicRecipes, categories, ingredients, addRecipe, updateRecipe, deleteRecipe, addCategory, updateCategory, deleteCategory, user, refresh } = useStore();
   const navigate = useNavigate();
   
   // Loading state - 只在首次加载时显示
@@ -131,7 +131,7 @@ const Recipes = () => {
         setImportText('');
         setParsedRecipes([]);
         // 刷新数据
-        window.location.reload();
+        await refresh();
       }
     } catch (error) {
       setImportError('导入失败: ' + (error as Error).message);

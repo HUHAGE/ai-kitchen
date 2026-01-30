@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { AppState, Category, Ingredient, Recipe, MealPlanItem, IngredientType, StorageType } from './types';
 import {
   ingredientsService,
@@ -87,7 +87,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [authLoading, setAuthLoading] = useState(true);
 
   // --- Initial Load ---
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -174,7 +174,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]); // 只依赖 user
 
   // --- Auth State Management ---
   useEffect(() => {
@@ -203,10 +203,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     // 监听认证状态变化
     const { data: authListener } = authService.onAuthStateChange((authUser) => {
       setUser(authUser);
-      if (authUser && !authUser.isGuest) {
-        // 真实用户登录后重新加载数据
-        loadData();
-      }
+      // 注意：不在这里调用 loadData()，由下面的 useEffect 统一处理
     });
 
     return () => {
