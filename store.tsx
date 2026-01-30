@@ -183,6 +183,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const currentUser = await authService.getCurrentUser();
         if (currentUser) {
           setUser(currentUser);
+          // 确保用户有 profile 记录
+          const { usersService } = await import('./services/users.service');
+          await usersService.ensureProfile();
         } else {
           // 检查是否有游客登录
           const guestUser = authService.getGuestUser();
@@ -200,7 +203,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     initAuth();
 
     // 监听认证状态变化
-    const { data: authListener } = authService.onAuthStateChange((authUser) => {
+    const { data: authListener } = authService.onAuthStateChange(async (authUser) => {
       // 只在用户真正改变时才更新状态，避免不必要的刷新
       setUser((prevUser) => {
         // 如果用户状态没有实质性变化，不更新
@@ -208,6 +211,12 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         if (authUser && prevUser && authUser.id === prevUser.id) return prevUser;
         return authUser;
       });
+      
+      // 如果是新登录的用户，确保有 profile
+      if (authUser && !authUser.isGuest) {
+        const { usersService } = await import('./services/users.service');
+        await usersService.ensureProfile();
+      }
     });
 
     return () => {
@@ -216,13 +225,13 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, []);
 
   useEffect(() => {
-    // 加载数据：真实用户或游客都可以加载
-    // 只在用户首次设置或用户 ID 改变时加载
-    if (user) {
+    // 加载数据：等待认证状态确定后再加载
+    // 游客（user 为 null）也可以加载公共数据
+    if (!authLoading) {
       loadData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]); // 只依赖用户 ID，而不是整个 user 对象
+  }, [authLoading, user?.id]); // 依赖认证加载状态和用户 ID
 
   // --- Category Logic ---
   const addCategory = async (name: string) => {

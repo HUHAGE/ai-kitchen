@@ -140,6 +140,7 @@ class AuthService {
 
   // 更新用户信息
   async updateProfile(updates: { displayName?: string; avatar?: string; bio?: string }) {
+    // 1. 更新 auth.users 的 metadata
     const { data, error } = await supabase.auth.updateUser({
       data: {
         display_name: updates.displayName,
@@ -149,6 +150,20 @@ class AuthService {
     });
 
     if (error) throw error;
+
+    // 2. 同时更新 kc_profiles 表（用于公开访问）
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase
+        .from('kc_profiles')
+        .upsert({
+          id: user.id,
+          display_name: updates.displayName,
+          avatar_url: updates.avatar,
+          bio: updates.bio,
+        });
+    }
+
     return data;
   }
 

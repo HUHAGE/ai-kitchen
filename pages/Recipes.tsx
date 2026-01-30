@@ -16,7 +16,8 @@ const Recipes = () => {
   
   // State
   const [view, setView] = useState<'list' | 'form' | 'categories' | 'import' | 'preview'>('list');
-  const [recipeTab, setRecipeTab] = useState<'my' | 'public'>('my'); // 新增：标签页状态
+  // 游客默认显示菜谱广场，登录用户默认显示我的菜谱
+  const [recipeTab, setRecipeTab] = useState<'my' | 'public'>(!user || user.isGuest ? 'public' : 'my');
   const [editingRecipe, setEditingRecipe] = useState<Partial<Recipe> | null>(null);
   const [previewRecipe, setPreviewRecipe] = useState<Recipe | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -43,6 +44,13 @@ const Recipes = () => {
 
   // 根据当前标签页选择要显示的菜谱列表
   const currentRecipes = recipeTab === 'my' ? myRecipes : publicRecipes;
+
+  // 当用户状态改变时，更新标签页
+  useEffect(() => {
+    if (!user || user.isGuest) {
+      setRecipeTab('public');
+    }
+  }, [user]);
 
   // Load user profiles for recipes
   useEffect(() => {
@@ -713,22 +721,25 @@ const Recipes = () => {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
         <h1 className="text-2xl md:text-3xl font-bold text-stone-800">菜谱大全</h1>
-        <div className="flex gap-2 flex-wrap md:flex-nowrap">
-          <Button variant="secondary" onClick={() => setView('categories')} className="whitespace-nowrap flex-1 md:flex-none">
-            分类
-          </Button>
-          <Button variant="secondary" onClick={() => setView('import')} className="whitespace-nowrap flex-1 md:flex-none">
-            <Upload size={16} className="md:mr-1" />
-            <span className="hidden md:inline ml-1">批量</span>导入
-          </Button>
-          <Button onClick={() => {
-            setEditingRecipe({ categoryId: '', difficulty: 1, ingredients: [], steps: [] });
-            setView('form');
-          }} className="whitespace-nowrap flex-1 md:flex-none">
-            <Plus size={16} className="md:mr-1" />
-            <span className="hidden md:inline ml-1">创建</span>菜谱
-          </Button>
-        </div>
+        {/* 只有登录用户才能看到管理按钮 */}
+        {user && !user.isGuest && (
+          <div className="flex gap-2 flex-wrap md:flex-nowrap">
+            <Button variant="secondary" onClick={() => setView('categories')} className="whitespace-nowrap flex-1 md:flex-none">
+              分类
+            </Button>
+            <Button variant="secondary" onClick={() => setView('import')} className="whitespace-nowrap flex-1 md:flex-none">
+              <Upload size={16} className="md:mr-1" />
+              <span className="hidden md:inline ml-1">批量</span>导入
+            </Button>
+            <Button onClick={() => {
+              setEditingRecipe({ categoryId: '', difficulty: 1, ingredients: [], steps: [] });
+              setView('form');
+            }} className="whitespace-nowrap flex-1 md:flex-none">
+              <Plus size={16} className="md:mr-1" />
+              <span className="hidden md:inline ml-1">创建</span>菜谱
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* 标签页切换 */}
