@@ -118,17 +118,27 @@ function parseRecipeSection(section: string): ParsedRecipe | null {
     }
     
     if (line.startsWith('**小贴士**:') || line.startsWith('**小贴士**：')) {
-      notes = line.split(/[:：]/)[1].trim();
-      // 可能小贴士在下一行或多行
-      if (!notes && i + 1 < lines.length) {
-        const notesLines = [];
-        for (let j = i + 1; j < lines.length; j++) {
-          if (lines[j].startsWith('##') || lines[j].startsWith('**')) break;
-          if (lines[j].startsWith('-') || /^\d+\./.test(lines[j])) break;
-          notesLines.push(lines[j]);
+      const firstLine = line.split(/[:：]/)[1]?.trim() || '';
+      const notesLines = firstLine ? [firstLine] : [];
+      
+      // 收集后续的小贴士行（以 - 开头的列表项）
+      for (let j = i + 1; j < lines.length; j++) {
+        const nextLine = lines[j];
+        // 遇到新的章节或字段就停止
+        if (nextLine.startsWith('##') || nextLine.startsWith('**')) break;
+        // 如果是列表项（- 开头），添加到小贴士中
+        if (nextLine.startsWith('-')) {
+          notesLines.push(nextLine.substring(1).trim());
+        } else if (nextLine && !nextLine.startsWith('###') && !/^\d+\./.test(nextLine)) {
+          // 普通文本行也添加
+          notesLines.push(nextLine);
+        } else {
+          // 遇到其他格式就停止
+          break;
         }
-        notes = notesLines.join('\n');
       }
+      
+      notes = notesLines.join('\n');
       continue;
     }
     

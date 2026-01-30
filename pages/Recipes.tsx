@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useStore } from '../store';
 import { GlassCard, Button, Input, Select, Modal, Badge } from '../components/ui';
 import { Recipe, RecipeIngredient, RecipeStep } from '../types';
-import { Plus, Trash2, Edit2, Clock, BarChart, Tag, Image as ImageIcon, X, Upload, FileText } from 'lucide-react';
+import { Plus, Trash2, Edit2, Clock, BarChart, Tag, Image as ImageIcon, X, Upload, FileText, Sparkles } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { useNavigate } from 'react-router-dom';
 import { parseRecipeMarkdown, ParsedRecipe } from '../lib/recipeImporter';
@@ -13,7 +13,8 @@ const Recipes = () => {
   const { recipes, categories, ingredients, addRecipe, updateRecipe, deleteRecipe, addCategory, updateCategory, deleteCategory } = useStore();
   const navigate = useNavigate();
   
-  // Loading state
+  // Loading state - 只在首次加载时显示
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   
   // State
@@ -32,13 +33,16 @@ const Recipes = () => {
   const [newCatName, setNewCatName] = useState('');
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
 
-  // Simulate loading on mount
+  // 只在首次挂载时显示加载动画
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, []);
+    if (isInitialLoad) {
+      const timer = setTimeout(() => {
+        setIsLoading(false);
+        setIsInitialLoad(false);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [isInitialLoad]);
 
   // --- Recipe Form Handlers ---
   const handleSaveRecipe = () => {
@@ -145,14 +149,25 @@ const Recipes = () => {
             <GlassCard>
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-bold text-lg">Markdown 格式</h3>
-                <a 
-                  href="/recipe-import-template.md" 
-                  download 
-                  className="text-sm text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
-                >
-                  <FileText size={16} />
-                  下载模板
-                </a>
+                <div className="flex gap-2">
+                  <a 
+                    href="https://doubao.com/bot/DxH2TNW7" 
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-1.5 rounded-lg hover:from-purple-600 hover:to-pink-600 flex items-center gap-1 transition-all"
+                  >
+                    <Sparkles size={14} />
+                    豆包快速生成
+                  </a>
+                  <a 
+                    href="/recipe-import-template.md" 
+                    download 
+                    className="text-sm text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+                  >
+                    <FileText size={16} />
+                    下载模板
+                  </a>
+                </div>
               </div>
               <textarea
                 className="w-full h-96 p-4 bg-white/50 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400 font-mono text-sm"
