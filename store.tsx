@@ -20,10 +20,15 @@ import {
   fromMealPlan,
 } from './lib/adapters';
 import { Toast, ToastType } from './components/Toast';
+import { authService, AuthUser } from './services/auth.service';
 
 interface StoreContextType extends AppState {
   loading: boolean;
   error: string | null;
+
+  // Auth
+  user: AuthUser | null;
+  authLoading: boolean;
 
   // Category Actions
   addCategory: (name: string) => Promise<void>;
@@ -72,6 +77,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
   // --- Initial Load ---
   const loadData = async () => {
@@ -100,17 +107,20 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
       const appCategories = dbCategories.map(toCategory);
 
-      // Load ingredients
-      const dbIngredients = await ingredientsService.getAll();
-      const appIngredients = await Promise.all(
-        dbIngredients.map(async (ing) => {
-          const substitutes = await ingredientsService.getSubstitutes(ing.id);
-          const substituteIds = substitutes.map((s) => s.id);
-          return toIngredient(ing, substituteIds);
-        })
-      );
+      // Load ingredients (only for real users, not guests)
+      let appIngredients: Ingredient[] = [];
+      if (user && !user.isGuest) {
+        const dbIngredients = await ingredientsService.getAll();
+        appIngredients = await Promise.all(
+          dbIngredients.map(async (ing) => {
+            const substitutes = await ingredientsService.getSubstitutes(ing.id);
+            const substituteIds = substitutes.map((s) => s.id);
+            return toIngredient(ing, substituteIds);
+          })
+        );
+      }
 
-      // Load recipes
+      // Load recipes (available for all users including guests)
       const dbRecipes = await recipesService.getAll();
       const appRecipes = await Promise.all(
         dbRecipes.map(async (r) => {
@@ -130,13 +140,16 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         })
       );
 
-      // Load meal plans (today)
-      const dbMealPlans = await mealPlansService.getToday();
-      const appMealPlans = dbMealPlans.map(toMealPlan);
+      // Load meal plans (only for real users, not guests)
+      let appMealPlans: MealPlanItem[] = [];
+      if (user && !user.isGuest) {
+        const dbMealPlans = await mealPlansService.getToday();
+        appMealPlans = dbMealPlans.map(toMealPlan);
+      }
 
       setCategories(appCategories);
       setIngredients(appIngredients);
-      setRecipes(appRecipes.filter((r): r is Recipe => r !== null));
+      setRecipes(appRecipes.filter((r) => r !== null) as Recipe[]);
       setDailyPlan(appMealPlans);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load data');
@@ -146,12 +159,56 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
+  // --- Auth State Management ---
   useEffect(() => {
-    loadData();
+    // 初始化认证状态
+    const initAuth = async () => {
+      try {
+        const currentUser = await authService.getCurrentUser();
+        if (currentUser) {
+          setUser(currentUser);
+        } else {
+          // 检查是否有游客登录
+          const guestUser = authService.getGuestUser();
+          if (guestUser) {
+            setUser(guestUser);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading user:', error);
+      } finally {
+        setAuthLoading(false);
+      }
+    };
+
+    initAuth();
+
+    // 监听认证状态变化
+    const { data: authListener } = authService.onAuthStateChange((authUser) => {
+      setUser(authUser);
+      if (authUser && !authUser.isGuest) {
+        // 真实用户登录后重新加载数据
+        loadData();
+      }
+    });
+
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
   }, []);
+
+  useEffect(() => {
+    // 加载数据：真实用户或游客都可以加载
+    if (user) {
+      loadData();
+    }
+  }, [user]);
 
   // --- Category Logic ---
   const addCategory = async (name: string) => {
+    if (user?.isGuest) {
+      throw new Error('游客模式下无法添加分类，请先登录');
+    }
     try {
       const dbCategory = await categoriesService.create(fromCategory({ name }));
       setCategories((prev) => [...prev, toCategory(dbCategory)]);
@@ -162,6 +219,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const updateCategory = async (id: string, name: string) => {
+    if (user?.isGuest) {
+      throw new Error('游客模式下无法修改分类，请先登录');
+    }
     try {
       const dbCategory = await categoriesService.update(id, fromCategory({ name }));
       setCategories((prev) => prev.map((c) => (c.id === id ? toCategory(dbCategory) : c)));
@@ -172,6 +232,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const deleteCategory = async (id: string, deleteRecipes: boolean) => {
+    if (user?.isGuest) {
+      throw new Error('游客模式下无法删除分类，请先登录');
+    }
     try {
       await categoriesService.delete(id);
       setCategories((prev) => prev.filter((c) => c.id !== id));
@@ -203,6 +266,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   // --- Recipe Logic ---
   const addRecipe = async (recipe: Omit<Recipe, 'id'>) => {
+    if (user?.isGuest) {
+      throw new Error('游客模式下无法添加菜谱，请先登录');
+    }
     try {
       const dbRecipe = await recipesService.createFull(
         fromRecipe(recipe),
@@ -227,6 +293,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const updateRecipe = async (recipe: Recipe) => {
+    if (user?.isGuest) {
+      throw new Error('游客模式下无法修改菜谱，请先登录');
+    }
     try {
       await recipesService.update(recipe.id, fromRecipe(recipe));
       await recipesService.updateIngredients(recipe.id, fromRecipeIngredients(recipe));
@@ -248,6 +317,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const deleteRecipe = async (id: string) => {
+    if (user?.isGuest) {
+      throw new Error('游客模式下无法删除菜谱，请先登录');
+    }
     try {
       await recipesService.delete(id);
       setRecipes((prev) => prev.filter((r) => r.id !== id));
@@ -260,6 +332,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   // --- Ingredient Logic ---
   const addIngredient = async (ing: Omit<Ingredient, 'id'>) => {
+    if (user?.isGuest) {
+      throw new Error('游客模式下无法添加食材，请先登录');
+    }
     try {
       const dbIngredient = await ingredientsService.create(fromIngredient(ing));
       const appIngredient = toIngredient(dbIngredient, ing.substitutes);
@@ -277,6 +352,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const updateIngredient = async (ing: Ingredient) => {
+    if (user?.isGuest) {
+      throw new Error('游客模式下无法修改食材，请先登录');
+    }
     try {
       const oldIngredient = ingredients.find((i) => i.id === ing.id);
       const oldSubstituteIds = oldIngredient?.substitutes || [];
@@ -309,6 +387,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const deleteIngredient = async (id: string) => {
+    if (user?.isGuest) {
+      throw new Error('游客模式下无法删除食材，请先登录');
+    }
     try {
       await ingredientsService.delete(id);
       setIngredients((prev) => prev.filter((i) => i.id !== id));
@@ -327,6 +408,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const deductStock = async (recipeId: string) => {
+    if (user?.isGuest) {
+      throw new Error('游客模式下无法扣减库存，请先登录');
+    }
     const recipe = recipes.find((r) => r.id === recipeId);
     if (!recipe) return { success: false, missing: [] };
 
@@ -369,6 +453,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   // --- Meal Plan Logic ---
   const addToMealPlan = async (recipeId: string) => {
+    if (user?.isGuest) {
+      throw new Error('游客模式下无法添加计划，请先登录');
+    }
     try {
       const dbMealPlan = await mealPlansService.create(fromMealPlan({ recipeId, completed: false }));
       setDailyPlan((prev) => [...prev, toMealPlan(dbMealPlan)]);
@@ -379,6 +466,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const removeFromMealPlan = async (itemId: string) => {
+    if (user?.isGuest) {
+      throw new Error('游客模式下无法删除计划，请先登录');
+    }
     try {
       await mealPlansService.delete(itemId);
       setDailyPlan((prev) => prev.filter((i) => i.id !== itemId));
@@ -389,6 +479,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const toggleMealCompleted = async (itemId: string) => {
+    if (user?.isGuest) {
+      throw new Error('游客模式下无法修改计划状态，请先登录');
+    }
     try {
       const dbMealPlan = await mealPlansService.toggleCompleted(itemId);
       setDailyPlan((prev) => prev.map((i) => (i.id === itemId ? toMealPlan(dbMealPlan) : i)));
@@ -427,6 +520,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         dailyPlan,
         loading,
         error,
+        user,
+        authLoading,
         addCategory,
         updateCategory,
         deleteCategory,

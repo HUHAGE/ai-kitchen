@@ -38,6 +38,7 @@ export type Database = {
       kc_ingredients: {
         Row: {
           id: string;
+          user_id: string;
           name: string;
           type: 'main' | 'side' | 'seasoning' | 'fresh' | 'dry';
           unit: string;
@@ -124,6 +125,7 @@ export type Database = {
       v_kc_low_stock_ingredients: {
         Row: {
           id: string;
+          user_id: string;
           name: string;
           type: string;
           unit: string;
@@ -137,6 +139,7 @@ export type Database = {
       v_kc_expiring_ingredients: {
         Row: {
           id: string;
+          user_id: string;
           name: string;
           type: string;
           unit: string;

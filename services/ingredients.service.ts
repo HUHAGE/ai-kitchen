@@ -5,6 +5,7 @@ export type StorageType = 'refrigerated' | 'frozen' | 'room';
 
 export interface Ingredient {
   id: string;
+  user_id: string;
   name: string;
   type: IngredientType;
   unit: string;
@@ -30,6 +31,7 @@ export interface IngredientInsert {
 
 export interface LowStockIngredient {
   id: string;
+  user_id: string;
   name: string;
   type: string;
   unit: string;
@@ -42,6 +44,7 @@ export interface LowStockIngredient {
 
 export interface ExpiringIngredient {
   id: string;
+  user_id: string;
   name: string;
   type: string;
   unit: string;
@@ -51,11 +54,15 @@ export interface ExpiringIngredient {
 }
 
 export const ingredientsService = {
-  // 获取所有食材
+  // 获取当前用户的所有食材
   async getAll(): Promise<Ingredient[]> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('未登录');
+
     const { data, error } = await supabase
       .from('kc_ingredients')
       .select('*')
+      .eq('user_id', user.id)
       .order('name', { ascending: true });
 
     if (error) throw error;
@@ -74,11 +81,17 @@ export const ingredientsService = {
     return data;
   },
 
-  // 创建食材
+  // 创建食材（自动关联当前用户）
   async create(ingredient: IngredientInsert): Promise<Ingredient> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('未登录');
+
     const { data, error } = await supabase
       .from('kc_ingredients')
-      .insert(ingredient)
+      .insert({
+        ...ingredient,
+        user_id: user.id,
+      })
       .select()
       .single();
 

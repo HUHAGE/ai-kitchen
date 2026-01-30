@@ -5,9 +5,28 @@ import { Ingredient, IngredientType, StorageType } from '../types';
 import { Plus, Trash2, Edit2, AlertTriangle, Search, Minus } from 'lucide-react';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import CookingLoader from '../components/CookingLoader';
+import GuestPrompt from '../components/GuestPrompt';
 
 const Fridge = () => {
-  const { ingredients, addIngredient, updateIngredient, deleteIngredient, loading, showToast } = useStore();
+  const { user, authLoading, ingredients, addIngredient, updateIngredient, deleteIngredient, loading, showToast } = useStore();
+  
+  // 等待认证状态加载
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">加载中...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // 游客无法访问冰箱
+  if (!user || user.isGuest) {
+    return <GuestPrompt feature="我的冰箱" />;
+  }
+  
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');

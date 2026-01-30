@@ -1,14 +1,40 @@
-import React from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
-import { ChefHat, Refrigerator, List, Calendar, Home } from 'lucide-react';
+import React, { useState } from 'react';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { ChefHat, Refrigerator, Calendar, Home, LogOut, User } from 'lucide-react';
+import { useStore } from '../store';
+import { authService } from '../services/auth.service';
 
 const Layout = () => {
+  const { user, showToast } = useStore();
+  const navigate = useNavigate();
+  const [showUserMenu, setShowUserMenu] = useState(false);
+
+  // 调试：查看用户对象
+  React.useEffect(() => {
+    console.log('Layout - Current user:', user);
+  }, [user]);
+
   const navItems = [
     { to: '/', icon: Home, label: '首页' },
     { to: '/fridge', icon: Refrigerator, label: '我的冰箱' },
     { to: '/recipes', icon: ChefHat, label: '菜谱大全' },
     { to: '/plan', icon: Calendar, label: '今日计划' },
   ];
+
+  const handleLogout = async () => {
+    try {
+      if (user?.isGuest) {
+        authService.clearGuestUser();
+        showToast('已退出游客模式', 'success');
+      } else {
+        await authService.signOut();
+        showToast('已退出登录', 'success');
+      }
+      navigate('/login');
+    } catch (error: any) {
+      showToast(error.message || '退出失败', 'error');
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row pb-24 md:pb-0">
@@ -39,7 +65,55 @@ const Layout = () => {
             </NavLink>
           ))}
         </nav>
-        <div className="p-6 mt-auto">
+        <div className="p-6 mt-auto space-y-4">
+          {/* User Info */}
+          <div className="relative">
+            <button
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/60 hover:bg-white/80 transition-all group"
+            >
+              <div className={`w-10 h-10 rounded-full ${user?.isGuest ? 'bg-gradient-to-br from-gray-400 to-gray-600' : 'bg-gradient-to-br from-emerald-400 to-emerald-600'} flex items-center justify-center text-white font-semibold`}>
+                {user?.avatar ? (
+                  <img src={user.avatar} alt={user.displayName} className="w-full h-full rounded-full object-cover" />
+                ) : (
+                  <User size={20} />
+                )}
+              </div>
+              <div className="flex-1 text-left">
+                <p className="text-sm font-semibold text-stone-800">
+                  {user?.isGuest === true ? '游客' : (user?.displayName || '用户')}
+                </p>
+                <p className="text-xs text-stone-500">
+                  {user?.isGuest === true ? '浏览模式' : (user?.email || user?.phone || '未登录')}
+                </p>
+              </div>
+            </button>
+
+            {showUserMenu && (
+              <div className="absolute bottom-full left-0 right-0 mb-2 bg-white rounded-2xl shadow-lg border border-stone-200 overflow-hidden">
+                {user?.isGuest && (
+                  <button
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      navigate('/login');
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-emerald-600 hover:bg-emerald-50 transition-colors border-b border-stone-200"
+                  >
+                    <User size={18} />
+                    <span className="text-sm font-medium">登录账号</span>
+                  </button>
+                )}
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  <LogOut size={18} />
+                  <span className="text-sm font-medium">{user?.isGuest ? '退出游客模式' : '退出登录'}</span>
+                </button>
+              </div>
+            )}
+          </div>
+
           <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100/50">
             <p className="text-xs font-semibold text-emerald-800 mb-1">小贴士</p>
             <p className="text-xs text-emerald-600/80 leading-relaxed">
