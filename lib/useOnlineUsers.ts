@@ -5,13 +5,7 @@ export const useOnlineUsers = () => {
   const [onlineCount, setOnlineCount] = useState(0);
 
   useEffect(() => {
-    const channel = supabase.channel('online-users', {
-      config: {
-        presence: {
-          key: 'user-presence',
-        },
-      },
-    });
+    const channel = supabase.channel('online-users');
 
     channel
       .on('presence', { event: 'sync' }, () => {
@@ -21,9 +15,10 @@ export const useOnlineUsers = () => {
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
-          // Track this user as online
+          // Track this user as online with a unique identifier
           await channel.track({
             online_at: new Date().toISOString(),
+            user_id: Math.random().toString(36).substring(7),
           });
         }
       });
