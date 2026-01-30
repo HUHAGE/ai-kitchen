@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
 import { Button, GlassCard, Badge } from '../components/ui';
-import { Play, Pause, ChevronRight, ChevronLeft, CheckCircle, RotateCcw, ArrowLeft, Lightbulb } from 'lucide-react';
+import { Play, Pause, ChevronRight, ChevronLeft, CheckCircle, RotateCcw, ArrowLeft, Lightbulb, List, ChefHat } from 'lucide-react';
 
 const Cooking = () => {
   const { id } = useParams();
@@ -14,6 +14,7 @@ const Cooking = () => {
   const [timerActive, setTimerActive] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
   const timerRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -106,11 +107,111 @@ const Cooking = () => {
   const currentStep = recipe.steps[currentStepIndex];
   const progress = ((currentStepIndex + 1) / recipe.steps.length) * 100;
 
+  // Preview Mode Render
+  if (isPreviewMode) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-6 pb-20">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => navigate(-1)}><ArrowLeft size={20}/></Button>
+            <span className="font-bold text-lg">{recipe.name} - 预览模式</span>
+          </div>
+          <Button 
+            variant="secondary" 
+            size="sm"
+            onClick={() => setIsPreviewMode(false)}
+            className="flex items-center gap-2"
+          >
+            <ChefHat size={18} />
+            烹饪模式
+          </Button>
+        </div>
+
+        {/* Ingredients Summary */}
+        <GlassCard className="bg-emerald-50/30 border-emerald-100">
+          <h4 className="text-sm font-bold text-stone-600 mb-2">所需食材准备</h4>
+          <div className="flex flex-wrap gap-2">
+            {recipe.ingredients.map(ri => {
+              const ing = ingredients.find(i => i.id === ri.ingredientId);
+              return (
+                <Badge key={ri.ingredientId} color="primary">
+                  {ing ? ing.name : '未知食材'} {ri.amount}{ing?.unit}
+                </Badge>
+              );
+            })}
+          </div>
+        </GlassCard>
+
+        {/* Notes */}
+        {recipe.notes && (
+          <div className="bg-amber-50/80 text-amber-900 p-4 rounded-2xl text-sm border border-amber-100 flex items-start gap-3">
+            <div className="bg-white p-1.5 rounded-lg text-amber-500 shrink-0 shadow-sm">
+              <Lightbulb size={18} fill="currentColor" />
+            </div>
+            <div className="pt-0.5">
+              <span className="font-bold block mb-1 text-amber-800">烹饪小贴士</span>
+              {recipe.notes}
+            </div>
+          </div>
+        )}
+
+        {/* Steps List */}
+        <GlassCard>
+          <h3 className="text-lg font-bold text-stone-800 mb-4">烹饪步骤（共 {recipe.steps.length} 步）</h3>
+          <div className="space-y-4">
+            {recipe.steps.map((step, index) => (
+              <div 
+                key={index}
+                className="flex gap-4 p-4 rounded-xl bg-stone-50/50 hover:bg-stone-100/50 transition-colors border border-stone-100"
+              >
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold">
+                  {index + 1}
+                </div>
+                <div className="flex-1">
+                  <p className="text-stone-800 leading-relaxed">{step.description}</p>
+                  {step.isTimerEnabled && (
+                    <div className="mt-2 flex items-center gap-2 text-sm text-stone-500">
+                      <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-600 px-2 py-1 rounded-lg font-medium">
+                        ⏱️ {step.duration} 分钟
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-6 pt-4 border-t border-stone-200">
+            <Button 
+              onClick={() => {
+                setIsPreviewMode(false);
+                setCurrentStepIndex(0);
+              }}
+              className="w-full"
+            >
+              开始烹饪
+            </Button>
+          </div>
+        </GlassCard>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-2xl mx-auto space-y-6 pb-20">
-      <div className="flex items-center gap-2 mb-4">
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)}><ArrowLeft size={20}/></Button>
-        <span className="font-bold text-lg">{recipe.name} - 烹饪模式</span>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={() => navigate(-1)}><ArrowLeft size={20}/></Button>
+          <span className="font-bold text-lg">{recipe.name} - 烹饪模式</span>
+        </div>
+        <Button 
+          variant="secondary" 
+          size="sm"
+          onClick={() => setIsPreviewMode(true)}
+          className="flex items-center gap-2"
+        >
+          <List size={18} />
+          预览模式
+        </Button>
       </div>
 
       {/* Progress Bar */}
