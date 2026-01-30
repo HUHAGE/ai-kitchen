@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useStore } from '../store';
 import { GlassCard, Button, Input, Select, Modal, Badge } from '../components/ui';
 import { Recipe, RecipeIngredient, RecipeStep } from '../types';
-import { Plus, Trash2, Edit2, Clock, BarChart, Tag, Image as ImageIcon, X, Upload, FileText, Sparkles } from 'lucide-react';
+import { Plus, Trash2, Edit2, Clock, BarChart, Tag, Image as ImageIcon, X, Upload, FileText, Sparkles, Search, Filter, SortAsc } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { useNavigate } from 'react-router-dom';
 import { parseRecipeMarkdown, ParsedRecipe } from '../lib/recipeImporter';
@@ -22,6 +22,10 @@ const Recipes = () => {
   const [editingRecipe, setEditingRecipe] = useState<Partial<Recipe> | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
+  const [filterDifficulty, setFilterDifficulty] = useState<number | ''>('');
+  const [filterTag, setFilterTag] = useState('');
+  const [sortBy, setSortBy] = useState<'name' | 'difficulty' | 'time'>('name');
+  const [showFilters, setShowFilters] = useState(false);
   
   // Import state
   const [importText, setImportText] = useState('');
@@ -470,33 +474,205 @@ const Recipes = () => {
   }
 
   // --- List View ---
-  const filteredRecipes = recipes.filter(r => 
-    (filterCategory ? r.categoryId === filterCategory : true) &&
-    r.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // 获取所有标签
+  const allTags = Array.from(new Set(recipes.flatMap(r => r.tags || [])));
+  
+  // 筛选和排序
+  const filteredRecipes = recipes
+    .filter(r => {
+      // 分类筛选
+      if (filterCategory && r.categoryId !== filterCategory) return false;
+      
+      // 难度筛选
+      if (filterDifficulty !== '' && r.difficulty !== filterDifficulty) return false;
+      
+      // 标签筛选
+      if (filterTag && !r.tags?.includes(filterTag)) return false;
+      
+      // 搜索词筛选（搜索名称、描述、标签）
+      if (searchTerm) {
+        const term = searchTerm.toLowerCase();
+        const matchName = r.name.toLowerCase().includes(term);
+        const matchDesc = r.description?.toLowerCase().includes(term);
+        const matchTags = r.tags?.some(t => t.toLowerCase().includes(term));
+        if (!matchName && !matchDesc && !matchTags) return false;
+      }
+      
+      return true;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'name':
+          return a.name.localeCompare(b.name, 'zh-CN');
+        case 'difficulty':
+          return a.difficulty - b.difficulty;
+        case 'time':
+          const timeA = a.steps.reduce((sum, s) => sum + s.duration, 0);
+          const timeB = b.steps.reduce((sum, s) => sum + s.duration, 0);
+          return timeA - timeB;
+        default:
+          return 0;
+      }
+    });
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
-        <h1 className="text-3xl font-bold text-stone-800">菜谱大全</h1>
-        <div className="flex gap-2 w-full md:w-auto">
-          <Button variant="secondary" onClick={() => setView('categories')}>管理分类</Button>
-          <Button variant="secondary" onClick={() => setView('import')}>
-            <Upload size={18} className="mr-1" /> 批量导入
+        <h1 className="text-2xl md:text-3xl font-bold text-stone-800">菜谱大全</h1>
+        <div className="flex gap-2 flex-wrap md:flex-nowrap">
+          <Button variant="secondary" onClick={() => setView('categories')} className="whitespace-nowrap flex-1 md:flex-none">
+            分类
+          </Button>
+          <Button variant="secondary" onClick={() => setView('import')} className="whitespace-nowrap flex-1 md:flex-none">
+            <Upload size={16} className="md:mr-1" />
+            <span className="hidden md:inline ml-1">批量</span>导入
           </Button>
           <Button onClick={() => {
             setEditingRecipe({ categoryId: '', difficulty: 1, ingredients: [], steps: [] });
             setView('form');
-          }}><Plus size={18} className="mr-1" /> 创建菜谱</Button>
+          }} className="whitespace-nowrap flex-1 md:flex-none">
+            <Plus size={16} className="md:mr-1" />
+            <span className="hidden md:inline ml-1">创建</span>菜谱
+          </Button>
         </div>
       </div>
 
+      {/* 搜索和筛选区域 */}
+      <GlassCard>
+        <div className="space-y-4">
+          {/* 搜索框 */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={20} />
+            <input
+              type="text"
+              placeholder="搜索菜谱名称、描述或标签..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-3 bg-white/50 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400 text-stone-800"
+            />
+          </div>
+
+          {/* 筛选按钮 */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2 text-sm text-stone-600 hover:text-emerald-600 transition-colors whitespace-nowrap"
+            >
+              <Filter size={16} />
+              {showFilters ? '隐藏筛选' : '显示筛选'}
+              {(filterDifficulty !== '' || filterTag) && (
+                <Badge className="ml-1">
+                  {[filterDifficulty !== '' ? 1 : 0, filterTag ? 1 : 0].reduce((a, b) => a + b, 0)}
+                </Badge>
+              )}
+            </button>
+            
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <SortAsc size={16} className="text-stone-400 flex-shrink-0" />
+              <select
+                value={sortBy}
+                onChange={e => setSortBy(e.target.value as any)}
+                className="text-sm bg-white/50 border border-stone-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-400 flex-1 sm:flex-none"
+              >
+                <option value="name">名称</option>
+                <option value="difficulty">难度</option>
+                <option value="time">时长</option>
+              </select>
+            </div>
+          </div>
+
+          {/* 高级筛选选项 */}
+          {showFilters && (
+            <div className="grid gap-4 pt-4 border-t border-stone-200">
+              <div>
+                <label className="block text-sm font-medium text-stone-600 mb-2">难度等级</label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setFilterDifficulty('')}
+                    className={`px-3 py-1.5 rounded-lg text-sm transition-colors whitespace-nowrap ${
+                      filterDifficulty === '' 
+                        ? 'bg-emerald-400 text-white' 
+                        : 'bg-white/50 text-stone-600 hover:bg-white/80'
+                    }`}
+                  >
+                    全部
+                  </button>
+                  {[1, 2, 3, 4, 5].map(level => (
+                    <button
+                      key={level}
+                      onClick={() => setFilterDifficulty(level)}
+                      className={`px-3 py-1.5 rounded-lg text-sm transition-colors whitespace-nowrap ${
+                        filterDifficulty === level 
+                          ? 'bg-emerald-400 text-white' 
+                          : 'bg-white/50 text-stone-600 hover:bg-white/80'
+                      }`}
+                    >
+                      {level}星
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-stone-600 mb-2">标签</label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setFilterTag('')}
+                    className={`px-3 py-1.5 rounded-lg text-sm transition-colors whitespace-nowrap ${
+                      filterTag === '' 
+                        ? 'bg-emerald-400 text-white' 
+                        : 'bg-white/50 text-stone-600 hover:bg-white/80'
+                    }`}
+                  >
+                    全部
+                  </button>
+                  {allTags.slice(0, 8).map(tag => (
+                    <button
+                      key={tag}
+                      onClick={() => setFilterTag(tag)}
+                      className={`px-3 py-1.5 rounded-lg text-sm transition-colors whitespace-nowrap ${
+                        filterTag === tag 
+                          ? 'bg-emerald-400 text-white' 
+                          : 'bg-white/50 text-stone-600 hover:bg-white/80'
+                      }`}
+                    >
+                      #{tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 清除筛选 */}
+          {(searchTerm || filterCategory || filterDifficulty !== '' || filterTag) && (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pt-2 border-t border-stone-200">
+              <span className="text-sm text-stone-500 whitespace-nowrap">
+                找到 {filteredRecipes.length} 个菜谱
+              </span>
+              <button
+                onClick={() => {
+                  setSearchTerm('');
+                  setFilterCategory('');
+                  setFilterDifficulty('');
+                  setFilterTag('');
+                }}
+                className="text-sm text-emerald-600 hover:text-emerald-700 font-medium whitespace-nowrap"
+              >
+                清除所有筛选
+              </button>
+            </div>
+          )}
+        </div>
+      </GlassCard>
+
+      {/* 分类快捷筛选 */}
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
         <button 
           onClick={() => setFilterCategory('')}
           className={`px-4 py-2 rounded-full whitespace-nowrap text-sm font-medium transition-colors ${filterCategory === '' ? 'bg-emerald-400 text-white' : 'bg-white/50 text-stone-600 hover:bg-white/80'}`}
         >
-          全部
+          全部分类
         </button>
         {categories.map(c => (
            <button 
@@ -511,6 +687,14 @@ const Recipes = () => {
 
       {isLoading ? (
         <CookingLoader />
+      ) : filteredRecipes.length === 0 ? (
+        <div className="text-center py-20">
+          <div className="text-stone-400 mb-4">
+            <Search size={64} className="mx-auto mb-4 opacity-30" />
+            <p className="text-lg font-medium">没有找到符合条件的菜谱</p>
+            <p className="text-sm mt-2">试试调整筛选条件或清除筛选</p>
+          </div>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredRecipes.map(recipe => (
