@@ -240,6 +240,16 @@ const Recipes = () => {
               <Clock size={14} />
               {totalTime} 分钟
             </span>
+            {/* 显示作者信息 */}
+            {previewRecipe.userId && (
+              <button
+                onClick={() => navigate(`/profile/${previewRecipe.userId}`)}
+                className="text-sm text-stone-600 flex items-center gap-1 hover:text-emerald-600 transition-colors cursor-pointer"
+              >
+                <User size={14} />
+                {userProfiles.get(previewRecipe.userId)?.displayName || '未知用户'}
+              </button>
+            )}
           </div>
           
           {previewRecipe.description && (

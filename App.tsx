@@ -78,6 +78,7 @@ const AppContent = () => {
                 <Profile />
               </AuthRequiredRoute>
             } />
+            <Route path="profile/:userId" element={<Profile />} />
           </Route>
           
           <Route path="*" element={<Navigate to="/" replace />} />
