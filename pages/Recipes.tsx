@@ -30,7 +30,7 @@ const Recipes = () => {
   const [parsedRecipes, setParsedRecipes] = useState<ParsedRecipe[]>([]);
   const [importError, setImportError] = useState('');
   const [isImporting, setIsImporting] = useState(false);
-  const [importProgress, setImportProgress] = useState({ current: 0, total: 0 });
+  const [simulatedProgress, setSimulatedProgress] = useState(0);
 
   // --- Category Management State ---
   const [isCatModalOpen, setIsCatModalOpen] = useState(false);
@@ -80,26 +80,33 @@ const Recipes = () => {
   const handleImportRecipes = async () => {
     setImportError('');
     setIsImporting(true);
+    setSimulatedProgress(0);
+    
+    // 启动模拟进度条
+    const progressInterval = setInterval(() => {
+      setSimulatedProgress(prev => {
+        if (prev >= 90) return prev; // 最多到90%，等待实际完成
+        return prev + Math.random() * 15; // 随机增长
+      });
+    }, 300);
     
     try {
       // 先解析
       const recipes = parseRecipeMarkdown(importText);
       if (recipes.length === 0) {
+        clearInterval(progressInterval);
         setImportError('未能解析到有效的菜谱，请检查格式是否正确');
         setIsImporting(false);
+        setSimulatedProgress(0);
         return;
       }
       
-      // 设置总数
-      setImportProgress({ current: 0, total: recipes.length });
+      // 批量导入
+      const results = await recipeImportService.importRecipes(recipes);
       
-      // 逐个导入并更新进度
-      const results = [];
-      for (let i = 0; i < recipes.length; i++) {
-        const result = await recipeImportService.importSingleRecipe(recipes[i]);
-        results.push(result);
-        setImportProgress({ current: i + 1, total: recipes.length });
-      }
+      // 停止模拟进度，设置为100%
+      clearInterval(progressInterval);
+      setSimulatedProgress(100);
       
       const successCount = results.filter(r => r.success).length;
       const failCount = results.filter(r => !r.success).length;
@@ -133,6 +140,8 @@ const Recipes = () => {
       }
       
       if (successCount > 0) {
+        // 等待一下让用户看到100%
+        await new Promise(resolve => setTimeout(resolve, 500));
         setView('list');
         setImportText('');
         setParsedRecipes([]);
@@ -140,12 +149,13 @@ const Recipes = () => {
         await refresh();
       }
     } catch (error) {
+      clearInterval(progressInterval);
       const errorMsg = '解析或导入失败: ' + (error as Error).message;
       setImportError(errorMsg);
       showToast(errorMsg, 'error', 5000);
     } finally {
       setIsImporting(false);
-      setImportProgress({ current: 0, total: 0 });
+      setSimulatedProgress(0);
     }
   };
 
@@ -327,26 +337,6 @@ const Recipes = () => {
             disabled={isImporting}
           />
           
-          {/* 导入进度条 */}
-          {isImporting && (
-            <div className="mt-4 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-emerald-800">
-                  正在导入菜谱...
-                </span>
-                <span className="text-sm text-emerald-600">
-                  {importProgress.current} / {importProgress.total}
-                </span>
-              </div>
-              <div className="w-full bg-emerald-100 rounded-full h-2.5 overflow-hidden">
-                <div 
-                  className="bg-emerald-500 h-2.5 rounded-full transition-all duration-300 ease-out"
-                  style={{ width: `${importProgress.total > 0 ? (importProgress.current / importProgress.total) * 100 : 0}%` }}
-                ></div>
-              </div>
-            </div>
-          )}
-          
           {importError && !isImporting && (
             <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
               {importError}
@@ -370,6 +360,26 @@ const Recipes = () => {
               清空
             </Button>
           </div>
+          
+          {/* 模拟进度条 - 放在按钮下面 */}
+          {isImporting && (
+            <div className="mt-4 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-emerald-800">
+                  正在导入菜谱...
+                </span>
+                <span className="text-sm text-emerald-600 font-semibold">
+                  {Math.round(simulatedProgress)}%
+                </span>
+              </div>
+              <div className="w-full bg-emerald-100 rounded-full h-3 overflow-hidden">
+                <div 
+                  className="bg-gradient-to-r from-emerald-500 to-emerald-600 h-3 rounded-full transition-all duration-300 ease-out"
+                  style={{ width: `${Math.min(simulatedProgress, 100)}%` }}
+                ></div>
+              </div>
+            </div>
+          )}
         </GlassCard>
       </div>
     );
