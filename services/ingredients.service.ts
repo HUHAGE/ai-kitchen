@@ -135,12 +135,12 @@ export const ingredientsService = {
   async getSubstitutes(ingredientId: string): Promise<Ingredient[]> {
     const { data, error } = await supabase
       .from('kc_ingredient_substitutes')
-      .select('substitutes!inner(*)')
+      .select('substitute_id, kc_ingredients!kc_ingredient_substitutes_substitute_id_fkey(*)')
       .eq('ingredient_id', ingredientId);
 
     if (error) throw error;
 
-    return (data || []).map((item: any) => item.substitutes);
+    return (data || []).map((item: any) => item.kc_ingredients);
   },
 
   // 添加替代品

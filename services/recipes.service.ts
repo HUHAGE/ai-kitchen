@@ -119,7 +119,7 @@ export const recipesService = {
         )
       `)
       .eq('recipe_id', id)
-      .order('step_number', { ascending: true });
+      .order('created_at', { ascending: true });
 
     if (ingredientsError) throw ingredientsError;
 
