@@ -63,7 +63,7 @@ const Recipes = () => {
           <h1 className="text-2xl font-bold">分类管理</h1>
         </div>
         <div className="grid gap-4 max-w-2xl">
-          <GlassCard className="flex gap-2">
+          <GlassCard className="flex gap-2 items-end">
             <Input 
               placeholder="新分类名称..." 
               value={newCatName} 
@@ -77,7 +77,7 @@ const Recipes = () => {
                  if(newCatName) addCategory(newCatName);
                }
                setNewCatName('');
-            }}>
+            }} className="whitespace-nowrap">
               {editingCatId ? '保存' : '添加'}
             </Button>
             {editingCatId && <Button variant="ghost" onClick={() => { setEditingCatId(null); setNewCatName(''); }}>取消</Button>}
