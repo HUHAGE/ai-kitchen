@@ -10,12 +10,8 @@ import { recipeImportService } from '../services/recipeImport.service';
 import CookingLoader from '../components/CookingLoader';
 
 const Recipes = () => {
-  const { recipes, myRecipes, publicRecipes, categories, ingredients, addRecipe, updateRecipe, deleteRecipe, addCategory, updateCategory, deleteCategory, user, refresh } = useStore();
+  const { recipes, myRecipes, publicRecipes, categories, ingredients, addRecipe, updateRecipe, deleteRecipe, addCategory, updateCategory, deleteCategory, user, refresh, loading } = useStore();
   const navigate = useNavigate();
-  
-  // Loading state - 只在首次加载时显示
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const [isLoading, setIsLoading] = useState(true);
   
   // State
   const [view, setView] = useState<'list' | 'form' | 'categories' | 'import' | 'preview'>('list');
@@ -38,17 +34,6 @@ const Recipes = () => {
   const [isCatModalOpen, setIsCatModalOpen] = useState(false);
   const [newCatName, setNewCatName] = useState('');
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
-
-  // 只在首次挂载时显示加载动画
-  useEffect(() => {
-    if (isInitialLoad) {
-      const timer = setTimeout(() => {
-        setIsLoading(false);
-        setIsInitialLoad(false);
-      }, 1500);
-      return () => clearTimeout(timer);
-    }
-  }, [isInitialLoad]);
 
   // --- Recipe Form Handlers ---
   const handleSaveRecipe = async () => {
@@ -957,7 +942,7 @@ const Recipes = () => {
         ))}
       </div>
 
-      {isLoading ? (
+      {loading ? (
         <CookingLoader />
       ) : filteredRecipes.length === 0 ? (
         <div className="text-center py-20">
