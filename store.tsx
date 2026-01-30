@@ -30,6 +30,10 @@ interface StoreContextType extends AppState {
   user: AuthUser | null;
   authLoading: boolean;
 
+  // Recipe lists
+  myRecipes: Recipe[];
+  publicRecipes: Recipe[];
+
   // Category Actions
   addCategory: (name: string) => Promise<void>;
   updateCategory: (id: string, name: string) => Promise<void>;
@@ -73,6 +77,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [categories, setCategories] = useState<Category[]>([]);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [myRecipes, setMyRecipes] = useState<Recipe[]>([]);
+  const [publicRecipes, setPublicRecipes] = useState<Recipe[]>([]);
   const [dailyPlan, setDailyPlan] = useState<MealPlanItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -140,6 +146,15 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         })
       );
 
+      // 分离我的菜谱和公共菜谱
+      const validRecipes = appRecipes.filter((r) => r !== null) as Recipe[];
+      const myRecipesList = user && !user.isGuest 
+        ? validRecipes.filter(r => r.userId === user.id)
+        : [];
+      const publicRecipesList = user && !user.isGuest
+        ? validRecipes.filter(r => r.userId !== user.id)
+        : validRecipes;
+
       // Load meal plans (only for real users, not guests)
       let appMealPlans: MealPlanItem[] = [];
       if (user && !user.isGuest) {
@@ -149,7 +164,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
       setCategories(appCategories);
       setIngredients(appIngredients);
-      setRecipes(appRecipes.filter((r) => r !== null) as Recipe[]);
+      setRecipes(validRecipes);
+      setMyRecipes(myRecipesList);
+      setPublicRecipes(publicRecipesList);
       setDailyPlan(appMealPlans);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load data');
@@ -517,6 +534,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         categories,
         ingredients,
         recipes,
+        myRecipes,
+        publicRecipes,
         dailyPlan,
         loading,
         error,

@@ -53,6 +53,7 @@ export interface Recipe {
   ingredients: RecipeIngredient[];
   steps: RecipeStep[];
   notes: string; // "Tips"
+  userId?: string; // 创建者用户 ID
 }
 
 export interface MealPlanItem {

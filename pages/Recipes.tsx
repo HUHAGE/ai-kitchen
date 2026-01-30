@@ -10,7 +10,7 @@ import { recipeImportService } from '../services/recipeImport.service';
 import CookingLoader from '../components/CookingLoader';
 
 const Recipes = () => {
-  const { recipes, categories, ingredients, addRecipe, updateRecipe, deleteRecipe, addCategory, updateCategory, deleteCategory } = useStore();
+  const { recipes, myRecipes, publicRecipes, categories, ingredients, addRecipe, updateRecipe, deleteRecipe, addCategory, updateCategory, deleteCategory, user } = useStore();
   const navigate = useNavigate();
   
   // Loading state - 只在首次加载时显示
@@ -19,6 +19,7 @@ const Recipes = () => {
   
   // State
   const [view, setView] = useState<'list' | 'form' | 'categories' | 'import'>('list');
+  const [recipeTab, setRecipeTab] = useState<'my' | 'public'>('my'); // 新增：标签页状态
   const [editingRecipe, setEditingRecipe] = useState<Partial<Recipe> | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
@@ -474,11 +475,14 @@ const Recipes = () => {
   }
 
   // --- List View ---
+  // 根据当前标签页选择要显示的菜谱列表
+  const currentRecipes = recipeTab === 'my' ? myRecipes : publicRecipes;
+  
   // 获取所有标签
-  const allTags = Array.from(new Set(recipes.flatMap(r => r.tags || [])));
+  const allTags = Array.from(new Set(currentRecipes.flatMap(r => r.tags || [])));
   
   // 筛选和排序
-  const filteredRecipes = recipes
+  const filteredRecipes = currentRecipes
     .filter(r => {
       // 分类筛选
       if (filterCategory && r.categoryId !== filterCategory) return false;
@@ -536,6 +540,56 @@ const Recipes = () => {
           </Button>
         </div>
       </div>
+
+      {/* 标签页切换 */}
+      {user && !user.isGuest && (
+        <div className="flex gap-2 border-b border-stone-200">
+          <button
+            onClick={() => {
+              setRecipeTab('my');
+              setSearchTerm('');
+              setFilterCategory('');
+              setFilterDifficulty('');
+              setFilterTag('');
+            }}
+            className={`px-6 py-3 font-medium transition-colors relative ${
+              recipeTab === 'my'
+                ? 'text-emerald-600'
+                : 'text-stone-500 hover:text-stone-700'
+            }`}
+          >
+            我的菜谱
+            {recipeTab === 'my' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-600" />
+            )}
+            <span className="ml-2 text-sm bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full">
+              {myRecipes.length}
+            </span>
+          </button>
+          <button
+            onClick={() => {
+              setRecipeTab('public');
+              setSearchTerm('');
+              setFilterCategory('');
+              setFilterDifficulty('');
+              setFilterTag('');
+            }}
+            className={`px-6 py-3 font-medium transition-colors relative ${
+              recipeTab === 'public'
+                ? 'text-emerald-600'
+                : 'text-stone-500 hover:text-stone-700'
+            }`}
+          >
+            菜谱广场
+            {recipeTab === 'public' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-600" />
+            )}
+            <span className="ml-2 text-sm bg-stone-100 text-stone-600 px-2 py-0.5 rounded-full">
+              {publicRecipes.length}
+            </span>
+          </button>
+        </div>
+      )}
 
       {/* 搜索和筛选区域 */}
       <GlassCard>

@@ -93,6 +93,7 @@ export function toRecipe(dbRecipe: any, dbIngredients: any[], dbSteps: any[]) {
       isTimerEnabled: !!step.timer,
     })),
     notes: dbRecipe.notes || '',
+    userId: dbRecipe.user_id || undefined,
   };
 }
 

@@ -66,6 +66,7 @@ export type Database = {
           prep_time: number | null;
           cook_time: number | null;
           servings: number;
+          user_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -162,6 +163,7 @@ export type Database = {
           prep_time: number | null;
           cook_time: number | null;
           servings: number;
+          user_id: string | null;
           ingredient_count: number;
           step_count: number;
         };

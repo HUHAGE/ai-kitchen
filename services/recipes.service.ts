@@ -13,6 +13,7 @@ export interface Recipe {
   prep_time: number | null;
   cook_time: number | null;
   servings: number;
+  user_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -28,6 +29,7 @@ export interface RecipeInsert {
   prep_time?: number | null;
   cook_time?: number | null;
   servings?: number;
+  user_id?: string | null;
 }
 
 export interface RecipeIngredient {
@@ -69,6 +71,7 @@ export interface RecipeDetail extends Recipe {
   category_name?: string | null;
   ingredient_count: number;
   step_count: number;
+  user_id: string | null;
 }
 
 export interface FullRecipe extends Recipe {
@@ -84,6 +87,35 @@ export const recipesService = {
       .from('v_kc_recipe_details')
       .select('*')
       .order('name', { ascending: true });
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  // 获取我的菜谱（当前用户创建的）
+  async getMyRecipes(userId: string): Promise<RecipeDetail[]> {
+    const { data, error } = await supabase
+      .from('v_kc_recipe_details')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  // 获取菜谱广场（其他用户创建的菜谱）
+  async getPublicRecipes(userId?: string): Promise<RecipeDetail[]> {
+    let query = supabase
+      .from('v_kc_recipe_details')
+      .select('*');
+
+    // 如果提供了 userId，排除该用户的菜谱
+    if (userId) {
+      query = query.neq('user_id', userId);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) throw error;
     return data || [];
@@ -154,9 +186,16 @@ export const recipesService = {
 
   // 创建菜谱
   async create(recipe: RecipeInsert): Promise<Recipe> {
+    // 自动添加当前用户 ID
+    const { data: { user } } = await supabase.auth.getUser();
+    const recipeWithUser = {
+      ...recipe,
+      user_id: user?.id || null,
+    };
+
     const { data, error } = await supabase
       .from('kc_recipes')
-      .insert(recipe)
+      .insert(recipeWithUser)
       .select()
       .single();
 
