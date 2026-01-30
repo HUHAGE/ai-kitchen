@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useStore } from '../store';
 import { GlassCard, Button, Input, Select, Modal, Badge } from '../components/ui';
 import { Recipe, RecipeIngredient, RecipeStep } from '../types';
@@ -7,10 +7,14 @@ import { v4 as uuidv4 } from 'uuid';
 import { useNavigate } from 'react-router-dom';
 import { parseRecipeMarkdown, ParsedRecipe } from '../lib/recipeImporter';
 import { recipeImportService } from '../services/recipeImport.service';
+import CookingLoader from '../components/CookingLoader';
 
 const Recipes = () => {
   const { recipes, categories, ingredients, addRecipe, updateRecipe, deleteRecipe, addCategory, updateCategory, deleteCategory } = useStore();
   const navigate = useNavigate();
+  
+  // Loading state
+  const [isLoading, setIsLoading] = useState(true);
   
   // State
   const [view, setView] = useState<'list' | 'form' | 'categories' | 'import'>('list');
@@ -27,6 +31,14 @@ const Recipes = () => {
   const [isCatModalOpen, setIsCatModalOpen] = useState(false);
   const [newCatName, setNewCatName] = useState('');
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
+
+  // Simulate loading on mount
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
 
   // --- Recipe Form Handlers ---
   const handleSaveRecipe = () => {
@@ -482,52 +494,56 @@ const Recipes = () => {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filteredRecipes.map(recipe => (
-          <GlassCard key={recipe.id} className="group flex flex-col h-full hover:shadow-xl transition-all duration-300 cursor-pointer" onClick={() => navigate(`/cooking/${recipe.id}`)}>
-             <div className="relative h-48 -mx-4 -mt-4 mb-4 overflow-hidden rounded-t-2xl bg-stone-200">
-               {recipe.image ? (
-                 <img src={recipe.image} alt={recipe.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-               ) : (
-                 <div className="flex items-center justify-center h-full text-stone-400">
-                    <ImageIcon size={32} />
+      {isLoading ? (
+        <CookingLoader />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filteredRecipes.map(recipe => (
+            <GlassCard key={recipe.id} className="group flex flex-col h-full hover:shadow-xl transition-all duration-300 cursor-pointer" onClick={() => navigate(`/cooking/${recipe.id}`)}>
+               <div className="relative h-48 -mx-4 -mt-4 mb-4 overflow-hidden rounded-t-2xl bg-stone-200">
+                 {recipe.image ? (
+                   <img src={recipe.image} alt={recipe.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                 ) : (
+                   <div className="flex items-center justify-center h-full text-stone-400">
+                      <ImageIcon size={32} />
+                   </div>
+                 )}
+                 <div className="absolute top-2 right-2">
+                   <Badge>{recipe.difficulty}星</Badge>
                  </div>
-               )}
-               <div className="absolute top-2 right-2">
-                 <Badge>{recipe.difficulty}星</Badge>
                </div>
-             </div>
-             <div className="flex-1">
-               <h3 className="font-bold text-lg text-stone-800 mb-1">{recipe.name}</h3>
-               <p className="text-sm text-stone-500 line-clamp-2 mb-3">{recipe.description}</p>
-               <div className="flex flex-wrap gap-1">
-                 {recipe.tags.slice(0, 3).map(t => <span key={t} className="text-[10px] bg-stone-100 text-stone-500 px-1.5 py-0.5 rounded">{t}</span>)}
+               <div className="flex-1">
+                 <h3 className="font-bold text-lg text-stone-800 mb-1">{recipe.name}</h3>
+                 <p className="text-sm text-stone-500 line-clamp-2 mb-3">{recipe.description}</p>
+                 <div className="flex flex-wrap gap-1">
+                   {recipe.tags.slice(0, 3).map(t => <span key={t} className="text-[10px] bg-stone-100 text-stone-500 px-1.5 py-0.5 rounded">{t}</span>)}
+                 </div>
                </div>
-             </div>
-             <div className="mt-4 pt-4 border-t border-stone-100 flex justify-between items-center" onClick={e => e.stopPropagation()}>
-                <span className="text-xs text-stone-400 flex items-center gap-1">
-                  <Clock size={12} /> 
-                  {recipe.steps.reduce((a, b) => a + b.duration, 0)} 分钟
-                </span>
-                <div className="flex gap-2">
-                   <button className="p-1.5 text-stone-400 hover:text-emerald-500 bg-stone-50 rounded-lg hover:bg-emerald-50" onClick={(e) => {
-                     e.stopPropagation();
-                     setEditingRecipe(recipe);
-                     setView('form');
-                   }}>
-                     <Edit2 size={16} />
-                   </button>
-                   <button className="p-1.5 text-stone-400 hover:text-red-500 bg-stone-50 rounded-lg hover:bg-red-50" onClick={(e) => {
-                     e.stopPropagation();
-                     if(confirm('确定删除此菜谱?')) deleteRecipe(recipe.id);
-                   }}>
-                     <Trash2 size={16} />
-                   </button>
-                </div>
-             </div>
-          </GlassCard>
-        ))}
-      </div>
+               <div className="mt-4 pt-4 border-t border-stone-100 flex justify-between items-center" onClick={e => e.stopPropagation()}>
+                  <span className="text-xs text-stone-400 flex items-center gap-1">
+                    <Clock size={12} /> 
+                    {recipe.steps.reduce((a, b) => a + b.duration, 0)} 分钟
+                  </span>
+                  <div className="flex gap-2">
+                     <button className="p-1.5 text-stone-400 hover:text-emerald-500 bg-stone-50 rounded-lg hover:bg-emerald-50" onClick={(e) => {
+                       e.stopPropagation();
+                       setEditingRecipe(recipe);
+                       setView('form');
+                     }}>
+                       <Edit2 size={16} />
+                     </button>
+                     <button className="p-1.5 text-stone-400 hover:text-red-500 bg-stone-50 rounded-lg hover:bg-red-50" onClick={(e) => {
+                       e.stopPropagation();
+                       if(confirm('确定删除此菜谱?')) deleteRecipe(recipe.id);
+                     }}>
+                       <Trash2 size={16} />
+                     </button>
+                  </div>
+               </div>
+            </GlassCard>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

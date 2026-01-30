@@ -128,11 +128,6 @@ const Fridge = () => {
   const inStock = filtered.filter(i => i.quantity > 0);
   const outOfStock = filtered.filter(i => i.quantity === 0);
 
-  // 显示加载动画
-  if (loading) {
-    return <CookingLoader />;
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -157,8 +152,13 @@ const Fridge = () => {
         </div>
       </div>
 
-      {/* 有库存的食材 */}
-      {inStock.length > 0 && (
+      {/* 显示加载动画 */}
+      {loading ? (
+        <CookingLoader />
+      ) : (
+        <>
+          {/* 有库存的食材 */}
+          {inStock.length > 0 && (
         <div className="space-y-4">
           <h2 className="text-xl font-bold text-stone-800 flex items-center gap-2">
             <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
@@ -289,11 +289,13 @@ const Fridge = () => {
         </div>
       )}
 
-      {/* 空状态 */}
-      {filtered.length === 0 && (
-        <div className="text-center py-12 text-stone-400">
-          <p>没有找到食材</p>
-        </div>
+          {/* 空状态 */}
+          {filtered.length === 0 && (
+            <div className="text-center py-12 text-stone-400">
+              <p>没有找到食材</p>
+            </div>
+          )}
+        </>
       )}
 
       <Modal
