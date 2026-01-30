@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { useOnlineUsers } from '../lib/useOnlineUsers';
 
 const Dashboard = () => {
-  const { ingredients, recipes, addToMealPlan } = useStore();
+  const { ingredients, recipes, addToMealPlan, showToast } = useStore();
   const navigate = useNavigate();
   const onlineCount = useOnlineUsers();
 
@@ -51,6 +51,7 @@ const Dashboard = () => {
 
   const handleCook = (id: string) => {
     addToMealPlan(id);
+    showToast('已加入今日菜单', 'success');
     navigate('/plan');
   };
 

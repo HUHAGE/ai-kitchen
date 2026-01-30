@@ -1,16 +1,19 @@
 import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { StoreProvider } from './store';
+import { StoreProvider, useStore } from './store';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Fridge from './pages/Fridge';
 import Recipes from './pages/Recipes';
 import Cooking from './pages/Cooking';
 import MealPlanner from './pages/MealPlanner';
+import { ToastContainer } from './components/Toast';
 
-const App = () => {
+const AppContent = () => {
+  const { toasts, removeToast } = useStore();
+
   return (
-    <StoreProvider>
+    <>
       <HashRouter>
         <Routes>
           <Route path="/" element={<Layout />}>
@@ -23,6 +26,15 @@ const App = () => {
           </Route>
         </Routes>
       </HashRouter>
+      <ToastContainer toasts={toasts} onClose={removeToast} />
+    </>
+  );
+};
+
+const App = () => {
+  return (
+    <StoreProvider>
+      <AppContent />
     </StoreProvider>
   );
 };

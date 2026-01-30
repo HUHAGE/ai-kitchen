@@ -17,7 +17,9 @@ import {
   fromRecipe,
   fromRecipeIngredients,
   fromRecipeSteps,
+  fromMealPlan,
 } from './lib/adapters';
+import { Toast, ToastType } from './components/Toast';
 
 interface StoreContextType extends AppState {
   loading: boolean;
@@ -52,6 +54,11 @@ interface StoreContextType extends AppState {
 
   // Refresh
   refresh: () => Promise<void>;
+
+  // Toast
+  toasts: Toast[];
+  showToast: (message: string, type?: ToastType, duration?: number) => void;
+  removeToast: (id: string) => void;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -64,6 +71,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [dailyPlan, setDailyPlan] = useState<MealPlanItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [toasts, setToasts] = useState<Toast[]>([]);
 
   // --- Initial Load ---
   const loadData = async () => {
@@ -399,6 +407,17 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const getRecipe = (id: string) => recipes.find((r) => r.id === id);
   const getCategory = (id: string) => categories.find((c) => c.id === id);
 
+  // --- Toast Logic ---
+  const showToast = (message: string, type: ToastType = 'info', duration: number = 3000) => {
+    const id = `toast-${Date.now()}-${Math.random()}`;
+    const newToast: Toast = { id, message, type, duration };
+    setToasts((prev) => [...prev, newToast]);
+  };
+
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
   return (
     <StoreContext.Provider
       value={{
@@ -426,6 +445,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         getRecipe,
         getCategory,
         refresh: loadData,
+        toasts,
+        showToast,
+        removeToast,
       }}
     >
       {children}

@@ -7,7 +7,7 @@ import { format, differenceInDays, parseISO } from 'date-fns';
 import CookingLoader from '../components/CookingLoader';
 
 const Fridge = () => {
-  const { ingredients, addIngredient, updateIngredient, deleteIngredient, loading } = useStore();
+  const { ingredients, addIngredient, updateIngredient, deleteIngredient, loading, showToast } = useStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -36,15 +36,25 @@ const Fridge = () => {
     };
   }, []);
 
-  const handleSubmit = () => {
-    if (!formData.name) return alert('请输入食材名称');
-    
-    if (editingId) {
-      updateIngredient({ ...formData, id: editingId } as Ingredient);
-    } else {
-      addIngredient(formData as Ingredient);
+  const handleSubmit = async () => {
+    if (!formData.name) {
+      showToast('请输入食材名称', 'warning');
+      return;
     }
-    closeModal();
+    
+    try {
+      if (editingId) {
+        await updateIngredient({ ...formData, id: editingId } as Ingredient);
+        showToast(`${formData.name} 更新成功`, 'success');
+      } else {
+        await addIngredient(formData as Ingredient);
+        showToast(`${formData.name} 添加成功`, 'success');
+      }
+      closeModal();
+    } catch (error) {
+      showToast('操作失败，请重试', 'error');
+      console.error('Failed to save ingredient:', error);
+    }
   };
 
   const openEdit = (ing: Ingredient) => {
@@ -59,9 +69,15 @@ const Fridge = () => {
     setFormData({ name: '', type: IngredientType.FRESH, unit: 'g', quantity: 0, threshold: 0, storage: StorageType.FRIDGE, substitutes: [] });
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm('确认删除该食材吗？')) {
-      deleteIngredient(id);
+  const handleDelete = async (id: string, name: string) => {
+    if (confirm(`确认删除 ${name} 吗？`)) {
+      try {
+        await deleteIngredient(id);
+        showToast(`${name} 已删除`, 'success');
+      } catch (error) {
+        showToast('删除失败，请重试', 'error');
+        console.error('Failed to delete ingredient:', error);
+      }
     }
   };
 
@@ -100,6 +116,7 @@ const Fridge = () => {
         await updateIngredient(itemToUpdate);
         // 更新成功，清除待更新记录
         pendingUpdates.current.delete(item.id);
+        // 成功时不显示提示
       } catch (error) {
         // 更新失败，回滚到 store 中的原始数量
         const originalItem = ingredients.find(i => i.id === item.id);
@@ -109,8 +126,8 @@ const Fridge = () => {
           );
         }
         
-        // 显示错误提示
-        alert(`更新失败：${error instanceof Error ? error.message : '未知错误'}`);
+        // 显示错误提示，不自动消失
+        showToast(`${item.name} 更新失败：${error instanceof Error ? error.message : '未知错误'}`, 'error', 0);
         console.error('Failed to update ingredient quantity:', error);
         
         pendingUpdates.current.delete(item.id);
@@ -120,7 +137,7 @@ const Fridge = () => {
     }, 500);
     
     updateTimers.current.set(item.id, timer);
-  }, [updateIngredient, ingredients]);
+  }, [updateIngredient, ingredients, showToast]);
 
   const filtered = localIngredients.filter(i => i.name.toLowerCase().includes(searchTerm.toLowerCase()));
   
@@ -185,7 +202,7 @@ const Fridge = () => {
                       <button onClick={() => openEdit(item)} className="p-1.5 text-stone-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg">
                         <Edit2 size={16} />
                       </button>
-                      <button onClick={() => handleDelete(item.id)} className="p-1.5 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-lg">
+                      <button onClick={() => handleDelete(item.id, item.name)} className="p-1.5 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-lg">
                         <Trash2 size={16} />
                       </button>
                     </div>
@@ -256,7 +273,7 @@ const Fridge = () => {
                     <button onClick={() => openEdit(item)} className="p-1.5 text-stone-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg">
                       <Edit2 size={16} />
                     </button>
-                    <button onClick={() => handleDelete(item.id)} className="p-1.5 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-lg">
+                    <button onClick={() => handleDelete(item.id, item.name)} className="p-1.5 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-lg">
                       <Trash2 size={16} />
                     </button>
                   </div>
