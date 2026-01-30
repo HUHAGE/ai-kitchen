@@ -151,9 +151,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const myRecipesList = user && !user.isGuest 
         ? validRecipes.filter(r => r.userId === user.id)
         : [];
-      const publicRecipesList = user && !user.isGuest
-        ? validRecipes.filter(r => r.userId !== user.id)
-        : validRecipes;
+      // 菜谱广场包含所有菜谱（包括我的菜谱）
+      const publicRecipesList = validRecipes;
 
       // Load meal plans (only for real users, not guests)
       let appMealPlans: MealPlanItem[] = [];

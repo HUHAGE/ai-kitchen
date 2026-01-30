@@ -31,10 +31,11 @@ export interface Category {
 }
 
 export interface RecipeIngredient {
-  ingredientId: string;
+  ingredientId: string; // 关联冰箱食材的ID，如果是手动输入则为空字符串
   amount: number;
-  name?: string; // 食材名称（从数据库获取）
-  unit?: string; // 食材单位（从数据库获取）
+  name?: string; // 食材名称（从数据库获取或手动输入）
+  unit?: string; // 食材单位（从数据库获取或手动输入）
+  isManual?: boolean; // 是否为手动输入的食材
 }
 
 export interface RecipeStep {

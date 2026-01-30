@@ -82,12 +82,20 @@ export function toRecipe(dbRecipe: any, dbIngredients: any[], dbSteps: any[]) {
     tags: dbRecipe.tags || [],
     image: dbRecipe.image,
     description: dbRecipe.description || '',
-    ingredients: dbIngredients.map((ing: any) => ({
-      ingredientId: ing.ingredient_id || '',
-      amount: ing.quantity,
-      name: ing.kc_ingredients?.name || ing.name || '',
-      unit: ing.kc_ingredients?.unit || ing.unit || '',
-    })),
+    ingredients: dbIngredients.map((ing: any) => {
+      // 优先使用手动输入的名称，然后是关联食材的名称
+      const name = ing.name || ing.kc_ingredients?.name || '';
+      const unit = ing.unit || ing.kc_ingredients?.unit || '';
+      const isManual = !ing.ingredient_id;
+      
+      return {
+        ingredientId: ing.ingredient_id || '',
+        amount: ing.quantity,
+        name,
+        unit,
+        isManual,
+      };
+    }),
     steps: dbSteps.map((step: any) => ({
       id: step.id,
       description: step.description,
@@ -119,8 +127,9 @@ export function fromRecipeIngredients(recipe: any) {
     recipe_id: recipe.id,
     ingredient_id: ing.ingredientId || null,
     quantity: ing.amount,
-    unit: '', // This needs to come from the ingredient itself, or we need to store it separately
+    unit: ing.unit || '', // 使用手动输入的单位或从食材获取
     optional: false,
+    name: ing.isManual ? ing.name : null, // 如果是手动输入，保存食材名称
   }));
 }
 
