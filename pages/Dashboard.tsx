@@ -1,13 +1,15 @@
 import React, { useMemo } from 'react';
 import { useStore } from '../store';
 import { GlassCard, Button, Badge } from '../components/ui';
-import { Clock, AlertCircle, ChefHat, Leaf, ChevronRight, Sparkles, Sun } from 'lucide-react';
+import { Clock, AlertCircle, ChefHat, Leaf, ChevronRight, Sparkles, Sun, Users } from 'lucide-react';
 import { differenceInDays, parseISO, isBefore } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import { useOnlineUsers } from '../lib/useOnlineUsers';
 
 const Dashboard = () => {
   const { ingredients, recipes, addToMealPlan } = useStore();
   const navigate = useNavigate();
+  const onlineCount = useOnlineUsers();
 
   // --- Logic: Alerts ---
   const expiringIngredients = useMemo(() => {
@@ -66,9 +68,20 @@ const Dashboard = () => {
             冰箱里有 <span className="text-emerald-600 font-bold px-1">{ingredients.length}</span> 种食材待命，今天想创造什么美味？
           </p>
         </div>
-        <Button onClick={() => navigate('/recipes')} className="shadow-emerald-200">
-          <Sparkles size={18} className="mr-2" /> 探索新菜谱
-        </Button>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-2.5 rounded-2xl border border-blue-100 shadow-sm">
+            <div className="relative">
+              <Users size={18} className="text-blue-600" />
+              <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            </div>
+            <span className="text-sm font-semibold text-blue-900">
+              <span className="text-blue-600">{onlineCount}</span> 人在线
+            </span>
+          </div>
+          <Button onClick={() => navigate('/recipes')} className="shadow-emerald-200">
+            <Sparkles size={18} className="mr-2" /> 探索新菜谱
+          </Button>
+        </div>
       </header>
 
       {/* Alerts Section */}
