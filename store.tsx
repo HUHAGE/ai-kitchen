@@ -202,8 +202,13 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     // 监听认证状态变化
     const { data: authListener } = authService.onAuthStateChange((authUser) => {
-      setUser(authUser);
-      // 注意：不在这里调用 loadData()，由下面的 useEffect 统一处理
+      // 只在用户真正改变时才更新状态，避免不必要的刷新
+      setUser((prevUser) => {
+        // 如果用户状态没有实质性变化，不更新
+        if (!authUser && !prevUser) return prevUser;
+        if (authUser && prevUser && authUser.id === prevUser.id) return prevUser;
+        return authUser;
+      });
     });
 
     return () => {
@@ -213,10 +218,12 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   useEffect(() => {
     // 加载数据：真实用户或游客都可以加载
+    // 只在用户首次设置或用户 ID 改变时加载
     if (user) {
       loadData();
     }
-  }, [user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]); // 只依赖用户 ID，而不是整个 user 对象
 
   // --- Category Logic ---
   const addCategory = async (name: string) => {
