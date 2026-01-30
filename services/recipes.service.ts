@@ -257,14 +257,75 @@ export const recipesService = {
     return data;
   },
 
-  // 删除菜谱
+  // 删除菜谱（用户删除自己的菜谱）
   async delete(id: string): Promise<void> {
+    // 先删除菜谱的食材关联（虽然有 CASCADE，但明确删除更安全）
+    const { error: ingredientsError } = await supabase
+      .from('kc_recipe_ingredients')
+      .delete()
+      .eq('recipe_id', id);
+
+    if (ingredientsError) {
+      console.error('删除菜谱食材失败:', ingredientsError);
+      throw ingredientsError;
+    }
+
+    // 删除菜谱的步骤
+    const { error: stepsError } = await supabase
+      .from('kc_recipe_steps')
+      .delete()
+      .eq('recipe_id', id);
+
+    if (stepsError) {
+      console.error('删除菜谱步骤失败:', stepsError);
+      throw stepsError;
+    }
+
+    // 删除菜谱的计划
+    const { error: plansError } = await supabase
+      .from('kc_meal_plans')
+      .delete()
+      .eq('recipe_id', id);
+
+    if (plansError) {
+      console.error('删除菜谱计划失败:', plansError);
+      throw plansError;
+    }
+
+    // 最后删除菜谱本身
     const { error } = await supabase
       .from('kc_recipes')
       .delete()
       .eq('id', id);
 
-    if (error) throw error;
+    if (error) {
+      console.error('删除菜谱失败:', error);
+      throw error;
+    }
+  },
+
+  // 管理员删除菜谱（绕过 RLS）
+  async adminDelete(id: string): Promise<void> {
+    const { error } = await supabase.rpc('admin_delete_recipe', {
+      recipe_id: id,
+    });
+
+    if (error) {
+      console.error('管理员删除菜谱失败:', error);
+      throw error;
+    }
+  },
+
+  // 管理员批量删除菜谱（绕过 RLS）
+  async adminBatchDelete(ids: string[]): Promise<void> {
+    const { error } = await supabase.rpc('admin_delete_recipes', {
+      recipe_ids: ids,
+    });
+
+    if (error) {
+      console.error('管理员批量删除菜谱失败:', error);
+      throw error;
+    }
   },
 
   // 更新食材

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, Eye, Lock } from 'lucide-react';
+import { Trash2, Lock, CheckSquare, Square } from 'lucide-react';
 import { recipesService, RecipeDetail } from '../services/recipes.service';
 import { useStore } from '../store';
 
@@ -12,6 +12,8 @@ const Admin: React.FC = () => {
   const [recipes, setRecipes] = useState<RecipeDetail[]>([]);
   const [loading, setLoading] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [selectedRecipes, setSelectedRecipes] = useState<Set<string>>(new Set());
+  const [batchDeleteConfirm, setBatchDeleteConfirm] = useState(false);
   const { showToast } = useStore();
 
   useEffect(() => {
@@ -45,13 +47,52 @@ const Admin: React.FC = () => {
 
   const handleDelete = async (id: string) => {
     try {
-      await recipesService.delete(id);
-      setRecipes(recipes.filter(r => r.id !== id));
+      await recipesService.adminDelete(id);
+      setRecipes(recipes.filter((r) => r.id !== id));
       setDeleteConfirm(null);
-      showToast('删除成功', 'success');
-    } catch (err) {
-      showToast('删除失败', 'error');
+      showToast('菜谱及相关数据已成功删除', 'success');
+    } catch (err: any) {
+      const errorMessage = err?.message || '删除失败，请重试';
+      showToast(`删除失败: ${errorMessage}`, 'error');
       console.error('Error deleting recipe:', err);
+    }
+  };
+
+  const toggleSelectRecipe = (id: string) => {
+    const newSelected = new Set(selectedRecipes);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedRecipes(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedRecipes.size === recipes.length) {
+      setSelectedRecipes(new Set());
+    } else {
+      setSelectedRecipes(new Set(recipes.map((r: RecipeDetail) => r.id)));
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    if (selectedRecipes.size === 0) {
+      showToast('请先选择要删除的菜谱', 'warning');
+      return;
+    }
+
+    try {
+      const idsToDelete = Array.from(selectedRecipes) as string[];
+      await recipesService.adminBatchDelete(idsToDelete);
+      setRecipes(recipes.filter((r: RecipeDetail) => !selectedRecipes.has(r.id)));
+      setSelectedRecipes(new Set());
+      setBatchDeleteConfirm(false);
+      showToast(`成功删除 ${idsToDelete.length} 个菜谱`, 'success');
+    } catch (err: any) {
+      const errorMessage = err?.message || '批量删除失败，请重试';
+      showToast(`批量删除失败: ${errorMessage}`, 'error');
+      console.error('Error batch deleting recipes:', err);
     }
   };
 
@@ -99,15 +140,50 @@ const Admin: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-800">菜谱管理</h1>
-            <button
-              onClick={() => setIsAuthenticated(false)}
-              className="text-gray-600 hover:text-gray-800 text-sm"
-            >
-              退出登录
-            </button>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-800">菜谱管理</h1>
+              <p className="text-gray-600 mt-2">
+                共 {recipes.length} 个菜谱
+                {selectedRecipes.size > 0 && ` · 已选择 ${selectedRecipes.size} 个`}
+              </p>
+            </div>
+            <div className="flex items-center space-x-4">
+              {selectedRecipes.size > 0 && (
+                <>
+                  {batchDeleteConfirm ? (
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={handleBatchDelete}
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                      >
+                        确认删除 {selectedRecipes.size} 个
+                      </button>
+                      <button
+                        onClick={() => setBatchDeleteConfirm(false)}
+                        className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm font-medium"
+                      >
+                        取消
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setBatchDeleteConfirm(true)}
+                      className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm font-medium inline-flex items-center"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      批量删除
+                    </button>
+                  )}
+                </>
+              )}
+              <button
+                onClick={() => setIsAuthenticated(false)}
+                className="text-gray-600 hover:text-gray-800 text-sm"
+              >
+                退出登录
+              </button>
+            </div>
           </div>
-          <p className="text-gray-600 mt-2">共 {recipes.length} 个菜谱</p>
         </div>
 
         {loading ? (
@@ -120,6 +196,18 @@ const Admin: React.FC = () => {
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <button
+                        onClick={toggleSelectAll}
+                        className="inline-flex items-center hover:text-gray-700"
+                      >
+                        {selectedRecipes.size === recipes.length && recipes.length > 0 ? (
+                          <CheckSquare className="w-5 h-5" />
+                        ) : (
+                          <Square className="w-5 h-5" />
+                        )}
+                      </button>
+                    </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       菜谱名称
                     </th>
@@ -146,6 +234,18 @@ const Admin: React.FC = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {recipes.map((recipe) => (
                     <tr key={recipe.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <button
+                          onClick={() => toggleSelectRecipe(recipe.id)}
+                          className="inline-flex items-center text-gray-500 hover:text-gray-700"
+                        >
+                          {selectedRecipes.has(recipe.id) ? (
+                            <CheckSquare className="w-5 h-5 text-orange-500" />
+                          ) : (
+                            <Square className="w-5 h-5" />
+                          )}
+                        </button>
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           {recipe.image && (
