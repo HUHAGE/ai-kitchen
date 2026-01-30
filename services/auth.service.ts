@@ -7,6 +7,7 @@ export interface AuthUser {
   phone?: string;
   displayName?: string;
   avatar?: string;
+  bio?: string;
   provider?: string;
   isGuest?: boolean;
 }
@@ -49,6 +50,7 @@ class AuthService {
         phone: user.phone,
         displayName: user.user_metadata?.display_name || user.email?.split('@')[0],
         avatar: user.user_metadata?.avatar_url,
+        bio: user.user_metadata?.bio,
         provider: user.app_metadata?.provider,
         isGuest: false,
       };
@@ -137,11 +139,12 @@ class AuthService {
   }
 
   // 更新用户信息
-  async updateProfile(updates: { displayName?: string; avatar?: string }) {
+  async updateProfile(updates: { displayName?: string; avatar?: string; bio?: string }) {
     const { data, error } = await supabase.auth.updateUser({
       data: {
         display_name: updates.displayName,
         avatar_url: updates.avatar,
+        bio: updates.bio,
       },
     });
 
@@ -188,6 +191,7 @@ class AuthService {
           phone: session.user.phone,
           displayName: session.user.user_metadata?.display_name || session.user.email?.split('@')[0],
           avatar: session.user.user_metadata?.avatar_url,
+          bio: session.user.user_metadata?.bio,
           provider: session.user.app_metadata?.provider,
           isGuest: false,
         };

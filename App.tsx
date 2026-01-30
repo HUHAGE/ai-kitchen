@@ -7,6 +7,7 @@ import Fridge from './pages/Fridge';
 import Recipes from './pages/Recipes';
 import Cooking from './pages/Cooking';
 import MealPlanner from './pages/MealPlanner';
+import Profile from './pages/Profile';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
@@ -72,6 +73,11 @@ const AppContent = () => {
             <Route path="recipes" element={<Recipes />} />
             <Route path="cooking/:id" element={<Cooking />} />
             <Route path="plan" element={<MealPlanner />} />
+            <Route path="profile" element={
+              <AuthRequiredRoute>
+                <Profile />
+              </AuthRequiredRoute>
+            } />
           </Route>
           
           <Route path="*" element={<Navigate to="/" replace />} />

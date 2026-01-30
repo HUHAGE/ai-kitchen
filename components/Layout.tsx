@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { ChefHat, Refrigerator, Calendar, Home, LogOut, User } from 'lucide-react';
+import { ChefHat, Refrigerator, Calendar, Home, LogOut, User, UserCircle } from 'lucide-react';
 import { useStore } from '../store';
 import { authService } from '../services/auth.service';
 
@@ -19,6 +19,7 @@ const Layout = () => {
     { to: '/fridge', icon: Refrigerator, label: '我的冰箱' },
     { to: '/recipes', icon: ChefHat, label: '菜谱大全' },
     { to: '/plan', icon: Calendar, label: '今日计划' },
+    { to: '/profile', icon: UserCircle, label: '我的主页' },
   ];
 
   const handleLogout = async () => {
