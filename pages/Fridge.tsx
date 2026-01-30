@@ -4,9 +4,10 @@ import { GlassCard, Button, Input, Select, Modal } from '../components/ui';
 import { Ingredient, IngredientType, StorageType } from '../types';
 import { Plus, Trash2, Edit2, AlertTriangle, Search, Minus } from 'lucide-react';
 import { format, differenceInDays, parseISO } from 'date-fns';
+import CookingLoader from '../components/CookingLoader';
 
 const Fridge = () => {
-  const { ingredients, addIngredient, updateIngredient, deleteIngredient } = useStore();
+  const { ingredients, addIngredient, updateIngredient, deleteIngredient, loading } = useStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -123,6 +124,11 @@ const Fridge = () => {
 
   const filtered = localIngredients.filter(i => i.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
+  // 显示加载动画
+  if (loading) {
+    return <CookingLoader />;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -154,18 +160,18 @@ const Fridge = () => {
           const isExpiring = daysLeft <= 3;
 
           return (
-            <GlassCard key={item.id} className="relative group">
+            <GlassCard key={item.id} className="relative group py-3 md:py-4">
               <div className="flex justify-between items-start mb-2">
                 <div>
-                  <h3 className="font-bold text-lg text-stone-800">{item.name}</h3>
+                  <h3 className="font-bold text-base md:text-lg text-stone-800">{item.name}</h3>
                   <div className="text-xs text-stone-500 mt-0.5 space-x-2">
                     <span>{item.type}</span>
                     <span>•</span>
                     <span>{item.storage}</span>
                   </div>
                 </div>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity md:opacity-0"> 
-                  {/* Mobile always visible? No, use tap on mobile logic usually, but here simple buttons */}
+                {/* 移动端始终显示，桌面端 hover 显示 */}
+                <div className="flex gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                   <button onClick={() => openEdit(item)} className="p-1.5 text-stone-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg">
                     <Edit2 size={16} />
                   </button>
@@ -173,32 +179,29 @@ const Fridge = () => {
                     <Trash2 size={16} />
                   </button>
                 </div>
-                {/* Mobile visible fallback */}
-                <button onClick={() => openEdit(item)} className="md:hidden absolute top-4 right-4 p-1.5 text-stone-400">
-                   <Edit2 size={16} />
-                </button>
               </div>
 
-              <div className="flex items-end justify-between mt-4">
+              <div className="flex items-end justify-between mt-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <div className="text-2xl font-bold text-stone-700">
+                    <div className="text-xl md:text-2xl font-bold text-stone-700">
                       {item.quantity} <span className="text-sm font-normal text-stone-500">{item.unit}</span>
                     </div>
+                    {/* 移动端更大的按钮 */}
                     <div className="flex gap-1">
                       <button 
                         onClick={() => handleQuantityChange(item, -1)}
-                        className="p-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-600 hover:text-stone-800 transition-colors active:scale-95"
+                        className="p-2 md:p-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-600 hover:text-stone-800 transition-colors active:scale-95"
                         title="减少数量"
                       >
-                        <Minus size={14} />
+                        <Minus size={18} className="md:w-3.5 md:h-3.5" />
                       </button>
                       <button 
                         onClick={() => handleQuantityChange(item, 1)}
-                        className="p-1 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-600 hover:text-emerald-700 transition-colors active:scale-95"
+                        className="p-2 md:p-1 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-600 hover:text-emerald-700 transition-colors active:scale-95"
                         title="增加数量"
                       >
-                        <Plus size={14} />
+                        <Plus size={18} className="md:w-3.5 md:h-3.5" />
                       </button>
                     </div>
                   </div>

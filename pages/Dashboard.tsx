@@ -57,7 +57,7 @@ const Dashboard = () => {
       <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
           <h1 className="text-4xl font-bold text-stone-800 tracking-tight leading-tight flex items-center gap-3">
-            早安，大厨
+            你好，大厨
             <div className="bg-amber-100 p-1.5 rounded-full text-amber-500 animate-pulse-slow">
               <Sun size={24} fill="currentColor" />
             </div>
