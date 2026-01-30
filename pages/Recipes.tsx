@@ -2,19 +2,26 @@ import React, { useState } from 'react';
 import { useStore } from '../store';
 import { GlassCard, Button, Input, Select, Modal, Badge } from '../components/ui';
 import { Recipe, RecipeIngredient, RecipeStep } from '../types';
-import { Plus, Trash2, Edit2, Clock, BarChart, Tag, Image as ImageIcon, X } from 'lucide-react';
+import { Plus, Trash2, Edit2, Clock, BarChart, Tag, Image as ImageIcon, X, Upload, FileText } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { useNavigate } from 'react-router-dom';
+import { parseRecipeMarkdown, ParsedRecipe } from '../lib/recipeImporter';
+import { recipeImportService } from '../services/recipeImport.service';
 
 const Recipes = () => {
   const { recipes, categories, ingredients, addRecipe, updateRecipe, deleteRecipe, addCategory, updateCategory, deleteCategory } = useStore();
   const navigate = useNavigate();
   
   // State
-  const [view, setView] = useState<'list' | 'form' | 'categories'>('list');
+  const [view, setView] = useState<'list' | 'form' | 'categories' | 'import'>('list');
   const [editingRecipe, setEditingRecipe] = useState<Partial<Recipe> | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
+  
+  // Import state
+  const [importText, setImportText] = useState('');
+  const [parsedRecipes, setParsedRecipes] = useState<ParsedRecipe[]>([]);
+  const [importError, setImportError] = useState('');
 
   // --- Category Management State ---
   const [isCatModalOpen, setIsCatModalOpen] = useState(false);
@@ -53,7 +60,208 @@ const Recipes = () => {
     }
   };
 
+  // --- Import Handlers ---
+  const handleParseImport = () => {
+    try {
+      setImportError('');
+      const recipes = parseRecipeMarkdown(importText);
+      if (recipes.length === 0) {
+        setImportError('未能解析到有效的菜谱，请检查格式是否正确');
+        return;
+      }
+      setParsedRecipes(recipes);
+    } catch (error) {
+      setImportError('解析失败: ' + (error as Error).message);
+    }
+  };
+
+  const handleImportRecipes = async () => {
+    setImportError('');
+    try {
+      const results = await recipeImportService.importRecipes(parsedRecipes);
+      
+      const successCount = results.filter(r => r.success).length;
+      const failCount = results.filter(r => !r.success).length;
+      
+      let message = `导入完成！\n成功: ${successCount} 个`;
+      if (failCount > 0) {
+        message += `\n失败: ${failCount} 个`;
+      }
+      
+      // 显示警告信息
+      const warnings = results.flatMap(r => r.warnings || []);
+      if (warnings.length > 0) {
+        message += '\n\n注意事项:\n' + warnings.slice(0, 5).join('\n');
+        if (warnings.length > 5) {
+          message += `\n...还有 ${warnings.length - 5} 条提示`;
+        }
+      }
+      
+      // 显示错误信息
+      const errors = results.filter(r => !r.success);
+      if (errors.length > 0) {
+        message += '\n\n失败的菜谱:\n' + errors.map(e => `- ${e.recipeName}: ${e.error}`).join('\n');
+      }
+      
+      alert(message);
+      
+      if (successCount > 0) {
+        setView('list');
+        setImportText('');
+        setParsedRecipes([]);
+        // 刷新数据
+        window.location.reload();
+      }
+    } catch (error) {
+      setImportError('导入失败: ' + (error as Error).message);
+    }
+  };
+
   // --- Render ---
+
+  if (view === 'import') {
+    return (
+      <div className="max-w-6xl mx-auto space-y-6">
+        <div className="flex items-center gap-4">
+          <Button variant="secondary" onClick={() => { setView('list'); setImportText(''); setParsedRecipes([]); setImportError(''); }}>返回</Button>
+          <h1 className="text-2xl font-bold">批量导入菜谱</h1>
+        </div>
+
+        <div className="grid lg:grid-cols-2 gap-6">
+          {/* 输入区 */}
+          <div className="space-y-4">
+            <GlassCard>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-bold text-lg">Markdown 格式</h3>
+                <a 
+                  href="/recipe-import-template.md" 
+                  download 
+                  className="text-sm text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+                >
+                  <FileText size={16} />
+                  下载模板
+                </a>
+              </div>
+              <textarea
+                className="w-full h-96 p-4 bg-white/50 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400 font-mono text-sm"
+                placeholder="粘贴 Markdown 格式的菜谱内容..."
+                value={importText}
+                onChange={e => setImportText(e.target.value)}
+              />
+              {importError && (
+                <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+                  {importError}
+                </div>
+              )}
+              <div className="mt-4 flex gap-2">
+                <Button onClick={handleParseImport} disabled={!importText}>
+                  解析菜谱
+                </Button>
+                <Button 
+                  variant="secondary" 
+                  onClick={() => {
+                    setImportText('');
+                    setParsedRecipes([]);
+                    setImportError('');
+                  }}
+                >
+                  清空
+                </Button>
+              </div>
+            </GlassCard>
+          </div>
+
+          {/* 预览区 */}
+          <div className="space-y-4">
+            <GlassCard>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-bold text-lg">
+                  解析结果 {parsedRecipes.length > 0 && `(${parsedRecipes.length} 个菜谱)`}
+                </h3>
+                {parsedRecipes.length > 0 && (
+                  <Button onClick={handleImportRecipes}>
+                    <Upload size={16} className="mr-1" />
+                    导入到系统
+                  </Button>
+                )}
+              </div>
+              
+              {parsedRecipes.length === 0 ? (
+                <div className="text-center py-12 text-stone-400">
+                  <FileText size={48} className="mx-auto mb-4 opacity-50" />
+                  <p>解析后的菜谱将显示在这里</p>
+                </div>
+              ) : (
+                <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+                  {parsedRecipes.map((recipe, index) => (
+                    <div key={index} className="bg-white/50 p-4 rounded-xl border border-stone-200">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <h4 className="font-bold text-lg text-stone-800">{recipe.name}</h4>
+                          <div className="flex gap-2 mt-1 text-xs text-stone-500">
+                            <span>{recipe.category}</span>
+                            <span>•</span>
+                            <span>{recipe.difficulty}星</span>
+                            {recipe.prepTime && <><span>•</span><span>准备 {recipe.prepTime}分钟</span></>}
+                            {recipe.cookTime && <><span>•</span><span>烹饪 {recipe.cookTime}分钟</span></>}
+                          </div>
+                        </div>
+                        <Badge>{recipe.ingredients.length} 食材</Badge>
+                      </div>
+                      
+                      {recipe.description && (
+                        <p className="text-sm text-stone-600 mb-3">{recipe.description}</p>
+                      )}
+                      
+                      {recipe.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mb-3">
+                          {recipe.tags.map(tag => (
+                            <span key={tag} className="text-xs bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded">
+                              #{tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <div className="font-medium text-stone-700 mb-1">食材:</div>
+                          <ul className="text-stone-600 space-y-0.5">
+                            {recipe.ingredients.slice(0, 5).map((ing, i) => (
+                              <li key={i} className="text-xs">
+                                • {ing.name} {ing.amount}{ing.unit}
+                                {ing.optional && <span className="text-stone-400"> (可选)</span>}
+                              </li>
+                            ))}
+                            {recipe.ingredients.length > 5 && (
+                              <li className="text-xs text-stone-400">...还有 {recipe.ingredients.length - 5} 个</li>
+                            )}
+                          </ul>
+                        </div>
+                        <div>
+                          <div className="font-medium text-stone-700 mb-1">步骤:</div>
+                          <ul className="text-stone-600 space-y-0.5">
+                            {recipe.steps.slice(0, 3).map((step, i) => (
+                              <li key={i} className="text-xs">
+                                {i + 1}. {step.description.substring(0, 30)}...
+                              </li>
+                            ))}
+                            {recipe.steps.length > 3 && (
+                              <li className="text-xs text-stone-400">...还有 {recipe.steps.length - 3} 步</li>
+                            )}
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </GlassCard>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (view === 'categories') {
     return (
@@ -246,6 +454,9 @@ const Recipes = () => {
         <h1 className="text-3xl font-bold text-stone-800">菜谱大全</h1>
         <div className="flex gap-2 w-full md:w-auto">
           <Button variant="secondary" onClick={() => setView('categories')}>管理分类</Button>
+          <Button variant="secondary" onClick={() => setView('import')}>
+            <Upload size={18} className="mr-1" /> 批量导入
+          </Button>
           <Button onClick={() => {
             setEditingRecipe({ categoryId: '', difficulty: 1, ingredients: [], steps: [] });
             setView('form');

@@ -123,6 +123,10 @@ const Fridge = () => {
   }, [updateIngredient, ingredients]);
 
   const filtered = localIngredients.filter(i => i.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  
+  // 分开有库存和缺货的食材
+  const inStock = filtered.filter(i => i.quantity > 0);
+  const outOfStock = filtered.filter(i => i.quantity === 0);
 
   // 显示加载动画
   if (loading) {
@@ -153,74 +157,144 @@ const Fridge = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filtered.map(item => {
-          const isLowStock = item.quantity <= item.threshold;
-          const daysLeft = item.expiryDate ? differenceInDays(parseISO(item.expiryDate), new Date()) : 999;
-          const isExpiring = daysLeft <= 3;
+      {/* 有库存的食材 */}
+      {inStock.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold text-stone-800 flex items-center gap-2">
+            <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
+            有库存 ({inStock.length})
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {inStock.map(item => {
+              const isLowStock = item.quantity <= item.threshold;
+              const daysLeft = item.expiryDate ? differenceInDays(parseISO(item.expiryDate), new Date()) : 999;
+              const isExpiring = daysLeft <= 3;
 
-          return (
-            <GlassCard key={item.id} className="relative group py-3 md:py-4">
-              <div className="flex justify-between items-start mb-2">
-                <div>
-                  <h3 className="font-bold text-base md:text-lg text-stone-800">{item.name}</h3>
-                  <div className="text-xs text-stone-500 mt-0.5 space-x-2">
-                    <span>{item.type}</span>
-                    <span>•</span>
-                    <span>{item.storage}</span>
-                  </div>
-                </div>
-                {/* 移动端始终显示，桌面端 hover 显示 */}
-                <div className="flex gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => openEdit(item)} className="p-1.5 text-stone-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg">
-                    <Edit2 size={16} />
-                  </button>
-                  <button onClick={() => handleDelete(item.id)} className="p-1.5 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-lg">
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex items-end justify-between mt-3">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <div className="text-xl md:text-2xl font-bold text-stone-700">
-                      {item.quantity} <span className="text-sm font-normal text-stone-500">{item.unit}</span>
+              return (
+                <GlassCard key={item.id} className="relative group py-3 md:py-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h3 className="font-bold text-base md:text-lg text-stone-800">{item.name}</h3>
+                      <div className="text-xs text-stone-500 mt-0.5 space-x-2">
+                        <span>{item.type}</span>
+                        <span>•</span>
+                        <span>{item.storage}</span>
+                      </div>
                     </div>
-                    {/* 移动端更大的按钮 */}
-                    <div className="flex gap-1">
-                      <button 
-                        onClick={() => handleQuantityChange(item, -1)}
-                        className="p-2 md:p-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-600 hover:text-stone-800 transition-colors active:scale-95"
-                        title="减少数量"
-                      >
-                        <Minus size={18} className="md:w-3.5 md:h-3.5" />
+                    <div className="flex gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => openEdit(item)} className="p-1.5 text-stone-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg">
+                        <Edit2 size={16} />
                       </button>
-                      <button 
-                        onClick={() => handleQuantityChange(item, 1)}
-                        className="p-2 md:p-1 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-600 hover:text-emerald-700 transition-colors active:scale-95"
-                        title="增加数量"
-                      >
-                        <Plus size={18} className="md:w-3.5 md:h-3.5" />
+                      <button onClick={() => handleDelete(item.id)} className="p-1.5 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-lg">
+                        <Trash2 size={16} />
                       </button>
                     </div>
                   </div>
-                  {isLowStock && (
-                    <div className="flex items-center text-xs text-amber-500 mt-1 font-medium">
-                      <AlertTriangle size={12} className="mr-1" /> 库存紧张
+
+                  <div className="flex items-end justify-between mt-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <div className="text-xl md:text-2xl font-bold text-stone-700">
+                          {item.quantity} <span className="text-sm font-normal text-stone-500">{item.unit}</span>
+                        </div>
+                        <div className="flex gap-1">
+                          <button 
+                            onClick={() => handleQuantityChange(item, -1)}
+                            className="p-2 md:p-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-600 hover:text-stone-800 transition-colors active:scale-95"
+                            title="减少数量"
+                          >
+                            <Minus size={18} className="md:w-3.5 md:h-3.5" />
+                          </button>
+                          <button 
+                            onClick={() => handleQuantityChange(item, 1)}
+                            className="p-2 md:p-1 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-600 hover:text-emerald-700 transition-colors active:scale-95"
+                            title="增加数量"
+                          >
+                            <Plus size={18} className="md:w-3.5 md:h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                      {isLowStock && (
+                        <div className="flex items-center text-xs text-amber-500 mt-1 font-medium">
+                          <AlertTriangle size={12} className="mr-1" /> 库存紧张
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-                {item.expiryDate && (
-                  <div className={`text-xs px-2 py-1 rounded-lg ${isExpiring ? 'bg-red-100 text-red-700' : 'bg-stone-100 text-stone-600'}`}>
-                    {daysLeft < 0 ? '已过期' : `${daysLeft}天过期`}
+                    {item.expiryDate && (
+                      <div className={`text-xs px-2 py-1 rounded-lg ${isExpiring ? 'bg-red-100 text-red-700' : 'bg-stone-100 text-stone-600'}`}>
+                        {daysLeft < 0 ? '已过期' : `${daysLeft}天过期`}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </GlassCard>
-          );
-        })}
-      </div>
+                </GlassCard>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 缺货的食材 */}
+      {outOfStock.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold text-stone-800 flex items-center gap-2">
+            <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+            缺货待补 ({outOfStock.length})
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {outOfStock.map(item => (
+              <GlassCard key={item.id} className="relative group py-3 md:py-4 bg-red-50/30 border-red-100">
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <h3 className="font-bold text-base md:text-lg text-stone-800">{item.name}</h3>
+                    <div className="text-xs text-stone-500 mt-0.5 space-x-2">
+                      <span>{item.type}</span>
+                      <span>•</span>
+                      <span>{item.storage}</span>
+                    </div>
+                  </div>
+                  <div className="flex gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => openEdit(item)} className="p-1.5 text-stone-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg">
+                      <Edit2 size={16} />
+                    </button>
+                    <button onClick={() => handleDelete(item.id)} className="p-1.5 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-lg">
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-end justify-between mt-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <div className="text-xl md:text-2xl font-bold text-red-600">
+                        缺货 <span className="text-sm font-normal text-stone-500">({item.unit})</span>
+                      </div>
+                      <div className="flex gap-1">
+                        <button 
+                          onClick={() => handleQuantityChange(item, 1)}
+                          className="p-2 md:p-1.5 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-600 hover:text-emerald-700 transition-colors active:scale-95"
+                          title="补货"
+                        >
+                          <Plus size={18} className="md:w-4 md:h-4" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex items-center text-xs text-red-500 mt-1 font-medium">
+                      <AlertTriangle size={12} className="mr-1" /> 需要补货
+                    </div>
+                  </div>
+                </div>
+              </GlassCard>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 空状态 */}
+      {filtered.length === 0 && (
+        <div className="text-center py-12 text-stone-400">
+          <p>没有找到食材</p>
+        </div>
+      )}
 
       <Modal
         isOpen={isModalOpen}
