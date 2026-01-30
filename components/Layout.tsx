@@ -6,7 +6,7 @@ const Layout = () => {
   const navItems = [
     { to: '/', icon: Home, label: '首页' },
     { to: '/fridge', icon: Refrigerator, label: '我的冰箱' },
-    { to: '/recipes', icon: ChefHat, label: '烹饪灵感' },
+    { to: '/recipes', icon: ChefHat, label: '菜谱大全' },
     { to: '/plan', icon: Calendar, label: '今日计划' },
   ];
 
@@ -15,11 +15,11 @@ const Layout = () => {
       {/* PC Sidebar */}
       <aside className="hidden md:flex w-72 flex-col fixed inset-y-0 left-0 glass-panel border-r border-white/60 z-30 shadow-sm">
         <div className="p-8">
-          <h1 className="text-2xl font-bold text-stone-800 flex items-center gap-3 tracking-tight">
+          <h1 className="text-2xl font-bold text-stone-800 flex items-center gap-3 tracking-tight whitespace-nowrap">
             <div className="bg-gradient-to-br from-emerald-400 to-emerald-600 p-2 rounded-xl text-white shadow-lg shadow-emerald-500/20">
               <ChefHat size={22} strokeWidth={2.5} />
             </div>
-            Creamy<span className="text-emerald-600">Kitchen</span>
+            爱厨房 <span className="text-emerald-600">Ai Kitchen</span>
           </h1>
         </div>
         <nav className="flex-1 px-6 space-y-2 mt-2">
