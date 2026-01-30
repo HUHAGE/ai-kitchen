@@ -33,6 +33,8 @@ export interface Category {
 export interface RecipeIngredient {
   ingredientId: string;
   amount: number;
+  name?: string; // 食材名称（从数据库获取）
+  unit?: string; // 食材单位（从数据库获取）
 }
 
 export interface RecipeStep {

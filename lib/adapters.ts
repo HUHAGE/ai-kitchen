@@ -85,6 +85,8 @@ export function toRecipe(dbRecipe: any, dbIngredients: any[], dbSteps: any[]) {
     ingredients: dbIngredients.map((ing: any) => ({
       ingredientId: ing.ingredient_id || '',
       amount: ing.quantity,
+      name: ing.kc_ingredients?.name || ing.name || '',
+      unit: ing.kc_ingredients?.unit || ing.unit || '',
     })),
     steps: dbSteps.map((step: any) => ({
       id: step.id,

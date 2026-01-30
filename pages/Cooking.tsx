@@ -132,10 +132,9 @@ const Cooking = () => {
           <h4 className="text-sm font-bold text-stone-600 mb-2">所需食材准备</h4>
           <div className="flex flex-wrap gap-2">
             {recipe.ingredients.map(ri => {
-              const ing = ingredients.find(i => i.id === ri.ingredientId);
               return (
                 <Badge key={ri.ingredientId} color="primary">
-                  {ing ? ing.name : '未知食材'} {ri.amount}{ing?.unit}
+                  {ri.name || '未知食材'} {ri.amount}{ri.unit}
                 </Badge>
               );
             })}
@@ -224,10 +223,9 @@ const Cooking = () => {
         <h4 className="text-sm font-bold text-stone-600 mb-2">所需食材准备</h4>
         <div className="flex flex-wrap gap-2">
           {recipe.ingredients.map(ri => {
-            const ing = ingredients.find(i => i.id === ri.ingredientId);
             return (
               <Badge key={ri.ingredientId} color="primary">
-                {ing ? ing.name : '未知食材'} {ri.amount}{ing?.unit}
+                {ri.name || '未知食材'} {ri.amount}{ri.unit}
               </Badge>
             );
           })}

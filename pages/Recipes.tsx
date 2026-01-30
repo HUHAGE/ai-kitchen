@@ -18,9 +18,10 @@ const Recipes = () => {
   const [isLoading, setIsLoading] = useState(true);
   
   // State
-  const [view, setView] = useState<'list' | 'form' | 'categories' | 'import'>('list');
+  const [view, setView] = useState<'list' | 'form' | 'categories' | 'import' | 'preview'>('list');
   const [recipeTab, setRecipeTab] = useState<'my' | 'public'>('my'); // 新增：标签页状态
   const [editingRecipe, setEditingRecipe] = useState<Partial<Recipe> | null>(null);
+  const [previewRecipe, setPreviewRecipe] = useState<Recipe | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [filterDifficulty, setFilterDifficulty] = useState<number | ''>('');
@@ -139,6 +140,142 @@ const Recipes = () => {
   };
 
   // --- Render ---
+
+  if (view === 'preview' && previewRecipe) {
+    const category = categories.find(c => c.id === previewRecipe.categoryId);
+    const totalTime = previewRecipe.steps.reduce((sum, s) => sum + s.duration, 0);
+    
+    return (
+      <div className="max-w-4xl mx-auto space-y-6 pb-20">
+        <div className="flex justify-between items-center sticky top-0 bg-[#FDFBF7]/90 backdrop-blur z-10 py-4 border-b border-stone-200">
+          <div className="flex items-center gap-4">
+            <Button variant="secondary" onClick={() => { setView('list'); setPreviewRecipe(null); }}>返回</Button>
+            <h1 className="text-2xl font-bold">{previewRecipe.name}</h1>
+          </div>
+          <div className="flex gap-2">
+            {/* 只有我的菜谱才显示编辑和删除按钮 */}
+            {recipeTab === 'my' && (
+              <>
+                <Button variant="secondary" onClick={() => {
+                  setEditingRecipe(previewRecipe);
+                  setView('form');
+                }}>
+                  <Edit2 size={16} className="mr-1" />
+                  编辑
+                </Button>
+                <Button variant="danger" onClick={() => {
+                  if (confirm('确定删除此菜谱?')) {
+                    deleteRecipe(previewRecipe.id);
+                    setView('list');
+                    setPreviewRecipe(null);
+                  }
+                }}>
+                  <Trash2 size={16} className="mr-1" />
+                  删除
+                </Button>
+              </>
+            )}
+            <Button onClick={() => navigate(`/cooking/${previewRecipe.id}`)}>
+              开始烹饪
+            </Button>
+          </div>
+        </div>
+
+        {/* 封面图 */}
+        {previewRecipe.image && (
+          <div className="relative h-64 md:h-96 -mx-4 md:mx-0 overflow-hidden rounded-none md:rounded-2xl">
+            <img 
+              src={previewRecipe.image} 
+              alt={previewRecipe.name} 
+              className="w-full h-full object-cover" 
+            />
+          </div>
+        )}
+
+        {/* 基础信息 */}
+        <GlassCard>
+          <div className="flex flex-wrap gap-4 items-center mb-4">
+            <Badge>{previewRecipe.difficulty}星</Badge>
+            {category && <span className="text-sm text-stone-600">{category.name}</span>}
+            <span className="text-sm text-stone-600 flex items-center gap-1">
+              <Clock size={14} />
+              {totalTime} 分钟
+            </span>
+          </div>
+          
+          {previewRecipe.description && (
+            <p className="text-stone-700 mb-4">{previewRecipe.description}</p>
+          )}
+          
+          {previewRecipe.tags && previewRecipe.tags.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {previewRecipe.tags.map(tag => (
+                <span key={tag} className="text-xs bg-emerald-50 text-emerald-600 px-2 py-1 rounded">
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
+        </GlassCard>
+
+        {/* 所需食材 */}
+        <GlassCard>
+          <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+            <Tag size={20} className="text-emerald-600" />
+            所需食材
+          </h3>
+          <div className="grid md:grid-cols-2 gap-3">
+            {previewRecipe.ingredients.map((ri, index) => {
+              return (
+                <div key={index} className="flex items-center gap-3 p-3 bg-white/50 rounded-lg">
+                  <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
+                  <span className="flex-1 text-stone-700">{ri.name || '未知食材'}</span>
+                  <span className="text-stone-600 font-medium">
+                    {ri.amount} {ri.unit}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </GlassCard>
+
+        {/* 烹饪步骤 */}
+        <GlassCard>
+          <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+            <BarChart size={20} className="text-emerald-600" />
+            烹饪步骤
+          </h3>
+          <div className="space-y-4">
+            {previewRecipe.steps.map((step, index) => (
+              <div key={step.id} className="flex gap-4">
+                <div className="flex-shrink-0 w-8 h-8 bg-emerald-400 text-white rounded-full flex items-center justify-center font-bold">
+                  {index + 1}
+                </div>
+                <div className="flex-1 pt-1">
+                  <p className="text-stone-700 mb-2">{step.description}</p>
+                  <div className="flex items-center gap-2 text-sm text-stone-500">
+                    <Clock size={14} />
+                    <span>{step.duration} 分钟</span>
+                    {step.isTimerEnabled && (
+                      <span className="text-emerald-600">(可计时)</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </GlassCard>
+
+        {/* 小贴士 */}
+        {previewRecipe.notes && (
+          <GlassCard>
+            <h3 className="font-bold text-lg mb-3">小贴士</h3>
+            <p className="text-stone-700">{previewRecipe.notes}</p>
+          </GlassCard>
+        )}
+      </div>
+    );
+  }
 
   if (view === 'import') {
     return (
@@ -752,7 +889,10 @@ const Recipes = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredRecipes.map(recipe => (
-            <GlassCard key={recipe.id} className="group flex flex-col h-full hover:shadow-xl transition-all duration-300 cursor-pointer" onClick={() => navigate(`/cooking/${recipe.id}`)}>
+            <GlassCard key={recipe.id} className="group flex flex-col h-full hover:shadow-xl transition-all duration-300 cursor-pointer" onClick={() => {
+              setPreviewRecipe(recipe);
+              setView('preview');
+            }}>
                <div className="relative h-48 -mx-4 -mt-4 mb-4 overflow-hidden rounded-t-2xl bg-stone-200">
                  <img 
                    src={recipe.image || '/logo.jpg'} 
@@ -775,21 +915,23 @@ const Recipes = () => {
                     <Clock size={12} /> 
                     {recipe.steps.reduce((a, b) => a + b.duration, 0)} 分钟
                   </span>
-                  <div className="flex gap-2">
-                     <button className="p-1.5 text-stone-400 hover:text-emerald-500 bg-stone-50 rounded-lg hover:bg-emerald-50" onClick={(e) => {
-                       e.stopPropagation();
-                       setEditingRecipe(recipe);
-                       setView('form');
-                     }}>
-                       <Edit2 size={16} />
-                     </button>
-                     <button className="p-1.5 text-stone-400 hover:text-red-500 bg-stone-50 rounded-lg hover:bg-red-50" onClick={(e) => {
-                       e.stopPropagation();
-                       if(confirm('确定删除此菜谱?')) deleteRecipe(recipe.id);
-                     }}>
-                       <Trash2 size={16} />
-                     </button>
-                  </div>
+                  {recipeTab === 'my' && (
+                    <div className="flex gap-2">
+                       <button className="p-1.5 text-stone-400 hover:text-emerald-500 bg-stone-50 rounded-lg hover:bg-emerald-50" onClick={(e) => {
+                         e.stopPropagation();
+                         setEditingRecipe(recipe);
+                         setView('form');
+                       }}>
+                         <Edit2 size={16} />
+                       </button>
+                       <button className="p-1.5 text-stone-400 hover:text-red-500 bg-stone-50 rounded-lg hover:bg-red-50" onClick={(e) => {
+                         e.stopPropagation();
+                         if(confirm('确定删除此菜谱?')) deleteRecipe(recipe.id);
+                       }}>
+                         <Trash2 size={16} />
+                       </button>
+                    </div>
+                  )}
                </div>
             </GlassCard>
           ))}
