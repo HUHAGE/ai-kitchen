@@ -59,7 +59,7 @@ const MealPlanner = () => {
             return (
               <GlassCard key={item.id} className={`flex flex-col md:flex-row items-center gap-4 transition-all ${item.completed ? 'opacity-60 grayscale' : ''}`}>
                 <div className="w-full md:w-24 h-24 rounded-xl bg-stone-200 overflow-hidden shrink-0">
-                  {recipe.image && <img src={recipe.image} className="w-full h-full object-cover" />}
+                  <img src={recipe.image || '/logo.jpg'} alt={recipe.name} className="w-full h-full object-cover" />
                 </div>
                 
                 <div className="flex-1 w-full text-center md:text-left">

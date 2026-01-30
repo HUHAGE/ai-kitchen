@@ -79,7 +79,7 @@ const Dashboard = () => {
             </span>
           </div>
           <Button onClick={() => navigate('/recipes')} className="shadow-emerald-200">
-            <Sparkles size={18} className="mr-2" /> 探索新菜谱
+             探索新菜谱
           </Button>
         </div>
       </header>
@@ -190,13 +190,11 @@ interface RecipeRecCardProps {
 const RecipeRecCard: React.FC<RecipeRecCardProps> = ({ recipe, onCook, reason, color }) => (
   <GlassCard className="flex flex-col h-full group p-0 overflow-hidden border-0 ring-1 ring-white/50">
     <div className="relative h-48 overflow-hidden bg-stone-100">
-      {recipe.image ? (
-        <img src={recipe.image} alt={recipe.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" />
-      ) : (
-        <div className="flex items-center justify-center h-full text-stone-300">
-          <ChefHat size={40} />
-        </div>
-      )}
+      <img 
+        src={recipe.image || '/logo.jpg'} 
+        alt={recipe.name} 
+        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" 
+      />
       <div className="absolute top-3 right-3 shadow-sm">
         <Badge color={color}>{reason}</Badge>
       </div>

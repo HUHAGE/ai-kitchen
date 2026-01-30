@@ -516,13 +516,11 @@ const Recipes = () => {
           {filteredRecipes.map(recipe => (
             <GlassCard key={recipe.id} className="group flex flex-col h-full hover:shadow-xl transition-all duration-300 cursor-pointer" onClick={() => navigate(`/cooking/${recipe.id}`)}>
                <div className="relative h-48 -mx-4 -mt-4 mb-4 overflow-hidden rounded-t-2xl bg-stone-200">
-                 {recipe.image ? (
-                   <img src={recipe.image} alt={recipe.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                 ) : (
-                   <div className="flex items-center justify-center h-full text-stone-400">
-                      <ImageIcon size={32} />
-                   </div>
-                 )}
+                 <img 
+                   src={recipe.image || '/logo.jpg'} 
+                   alt={recipe.name} 
+                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                 />
                  <div className="absolute top-2 right-2">
                    <Badge>{recipe.difficulty}星</Badge>
                  </div>
