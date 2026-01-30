@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useStore } from '../store';
 import { GlassCard, Button, Input, Select, Modal, Badge } from '../components/ui';
 import { Recipe, RecipeIngredient, RecipeStep } from '../types';
-import { Plus, Trash2, Edit2, Clock, BarChart, Tag, Image as ImageIcon, X, Upload, FileText, Sparkles, Search, Filter, SortAsc } from 'lucide-react';
+import { Plus, Trash2, Edit2, Clock, BarChart, Tag, Image as ImageIcon, X, Upload, FileText, Sparkles, Search, Filter, SortAsc, User } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { useNavigate } from 'react-router-dom';
 import { parseRecipeMarkdown, ParsedRecipe } from '../lib/recipeImporter';
 import { recipeImportService } from '../services/recipeImport.service';
 import CookingLoader from '../components/CookingLoader';
+import { usersService, UserProfile } from '../services/users.service';
 
 const Recipes = () => {
   const { recipes, myRecipes, publicRecipes, categories, ingredients, addRecipe, updateRecipe, deleteRecipe, addCategory, updateCategory, deleteCategory, user, refresh, loading, showToast } = useStore();
@@ -32,10 +33,28 @@ const Recipes = () => {
   const [isImporting, setIsImporting] = useState(false);
   const [simulatedProgress, setSimulatedProgress] = useState(0);
 
+  // User profiles cache
+  const [userProfiles, setUserProfiles] = useState<Map<string, UserProfile>>(new Map());
+
   // --- Category Management State ---
   const [isCatModalOpen, setIsCatModalOpen] = useState(false);
   const [newCatName, setNewCatName] = useState('');
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
+
+  // 根据当前标签页选择要显示的菜谱列表
+  const currentRecipes = recipeTab === 'my' ? myRecipes : publicRecipes;
+
+  // Load user profiles for recipes
+  useEffect(() => {
+    const loadUserProfiles = async () => {
+      const userIds = Array.from(new Set(currentRecipes.map(r => r.userId).filter(Boolean) as string[]));
+      if (userIds.length > 0) {
+        const profiles = await usersService.getUsersByIds(userIds);
+        setUserProfiles(profiles);
+      }
+    };
+    loadUserProfiles();
+  }, [currentRecipes]);
 
   // --- Recipe Form Handlers ---
   const handleSaveRecipe = async () => {
@@ -639,9 +658,6 @@ const Recipes = () => {
   }
 
   // --- List View ---
-  // 根据当前标签页选择要显示的菜谱列表
-  const currentRecipes = recipeTab === 'my' ? myRecipes : publicRecipes;
-  
   // 获取所有标签
   const allTags = Array.from(new Set(currentRecipes.flatMap(r => r.tags || [])));
   
@@ -928,11 +944,16 @@ const Recipes = () => {
                  />
                  <div className="absolute top-2 right-2 flex gap-2">
                    <Badge>{recipe.difficulty}星</Badge>
-                   {/* 在菜谱广场上为我的菜谱添加"我的"标签 */}
-                   {recipeTab === 'public' && user && !user.isGuest && recipe.userId === user.id && (
-                     <Badge color="primary">我的</Badge>
-                   )}
                  </div>
+                 {/* 显示作者标签 */}
+                 {recipe.userId && (
+                   <div className="absolute bottom-2 left-2">
+                     <div className="flex items-center gap-1.5 bg-black/50 backdrop-blur-sm text-white px-2 py-1 rounded-lg text-xs">
+                       <User size={12} />
+                       <span>{userProfiles.get(recipe.userId)?.displayName || '未知用户'}</span>
+                     </div>
+                   </div>
+                 )}
                </div>
                <div className="flex-1">
                  <h3 className="font-bold text-lg text-stone-800 mb-1">{recipe.name}</h3>

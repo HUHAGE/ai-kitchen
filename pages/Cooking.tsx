@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
 import { Button, GlassCard, Badge } from '../components/ui';
-import { Play, Pause, ChevronRight, ChevronLeft, CheckCircle, RotateCcw, ArrowLeft, Lightbulb, List, ChefHat } from 'lucide-react';
+import { Play, Pause, ChevronRight, ChevronLeft, CheckCircle, RotateCcw, ArrowLeft, Lightbulb, List, ChefHat, User } from 'lucide-react';
+import { usersService, UserProfile } from '../services/users.service';
 
 const Cooking = () => {
   const { id } = useParams();
@@ -15,6 +16,7 @@ const Cooking = () => {
   const [timeLeft, setTimeLeft] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [recipeAuthor, setRecipeAuthor] = useState<UserProfile | null>(null);
   const timerRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -25,6 +27,12 @@ const Cooking = () => {
       // Initialize timer for first step
       if (recipe.steps.length > 0) {
         setTimeLeft(recipe.steps[0].duration * 60);
+      }
+      // Load recipe author
+      if (recipe.userId) {
+        usersService.getUserById(recipe.userId).then(author => {
+          if (author) setRecipeAuthor(author);
+        });
       }
     }
   }, [recipe]);
@@ -127,6 +135,36 @@ const Cooking = () => {
           </Button>
         </div>
 
+        {/* 作者信息 */}
+        {recipeAuthor && (
+          <GlassCard className="bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-100">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white overflow-hidden">
+                  {recipeAuthor.avatar ? (
+                    <img src={recipeAuthor.avatar} alt={recipeAuthor.displayName} className="w-full h-full object-cover" />
+                  ) : (
+                    <User size={24} />
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm text-stone-500">菜谱作者</p>
+                  <p className="font-semibold text-stone-800">{recipeAuthor.displayName}</p>
+                </div>
+              </div>
+              <Button 
+                variant="secondary" 
+                size="sm"
+                onClick={() => navigate('/profile')}
+                className="flex items-center gap-2"
+              >
+                <User size={16} />
+                查看主页
+              </Button>
+            </div>
+          </GlassCard>
+        )}
+
         {/* Ingredients Summary */}
         <GlassCard className="bg-emerald-50/30 border-emerald-100">
           <h4 className="text-sm font-bold text-stone-600 mb-2">所需食材准备</h4>
@@ -212,6 +250,36 @@ const Cooking = () => {
           预览模式
         </Button>
       </div>
+
+      {/* 作者信息 */}
+      {recipeAuthor && (
+        <GlassCard className="bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-100">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white overflow-hidden">
+                {recipeAuthor.avatar ? (
+                  <img src={recipeAuthor.avatar} alt={recipeAuthor.displayName} className="w-full h-full object-cover" />
+                ) : (
+                  <User size={24} />
+                )}
+              </div>
+              <div>
+                <p className="text-sm text-stone-500">菜谱作者</p>
+                <p className="font-semibold text-stone-800">{recipeAuthor.displayName}</p>
+              </div>
+            </div>
+            <Button 
+              variant="secondary" 
+              size="sm"
+              onClick={() => navigate('/profile')}
+              className="flex items-center gap-2"
+            >
+              <User size={16} />
+              查看主页
+            </Button>
+          </div>
+        </GlassCard>
+      )}
 
       {/* Progress Bar */}
       <div className="w-full bg-stone-200 h-2 rounded-full overflow-hidden">
