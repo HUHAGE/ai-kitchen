@@ -1,20 +1,39 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useStore } from '../store';
-import { GlassCard, Button, Input, Select, Modal, Badge } from '../components/ui';
+import { GlassCard, Button, Input, Select, Modal } from '../components/ui';
 import { Ingredient, IngredientType, StorageType } from '../types';
-import { Plus, Trash2, Edit2, AlertTriangle, Search } from 'lucide-react';
-import { format, differenceInDays, parseISO, addDays } from 'date-fns';
+import { Plus, Trash2, Edit2, AlertTriangle, Search, Minus } from 'lucide-react';
+import { format, differenceInDays, parseISO } from 'date-fns';
 
 const Fridge = () => {
   const { ingredients, addIngredient, updateIngredient, deleteIngredient } = useStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [localIngredients, setLocalIngredients] = useState<Ingredient[]>([]);
+  
+  // 用于防抖的 refs
+  const updateTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const pendingUpdates = useRef<Map<string, Ingredient>>(new Map());
 
   // Form State
   const [formData, setFormData] = useState<Partial<Ingredient>>({
     name: '', type: IngredientType.FRESH, unit: 'g', quantity: 0, threshold: 0, storage: StorageType.FRIDGE, substitutes: []
   });
+
+  // Sync local ingredients with store
+  React.useEffect(() => {
+    setLocalIngredients(ingredients);
+  }, [ingredients]);
+
+  // 清理定时器
+  React.useEffect(() => {
+    return () => {
+      // 组件卸载时清除所有定时器
+      updateTimers.current.forEach(timer => clearTimeout(timer));
+      updateTimers.current.clear();
+    };
+  }, []);
 
   const handleSubmit = () => {
     if (!formData.name) return alert('请输入食材名称');
@@ -45,7 +64,64 @@ const Fridge = () => {
     }
   };
 
-  const filtered = ingredients.filter(i => i.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const handleQuantityChange = useCallback((item: Ingredient, delta: number) => {
+    // 立即更新 UI
+    setLocalIngredients(prev => {
+      const updated = prev.map(i => {
+        if (i.id === item.id) {
+          const newQuantity = Math.max(0, i.quantity + delta);
+          return { ...i, quantity: newQuantity };
+        }
+        return i;
+      });
+      
+      // 保存更新后的食材用于后续数据库更新
+      const updatedItem = updated.find(i => i.id === item.id);
+      if (updatedItem) {
+        pendingUpdates.current.set(item.id, updatedItem);
+      }
+      
+      return updated;
+    });
+    
+    // 清除之前的定时器
+    const existingTimer = updateTimers.current.get(item.id);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+    }
+    
+    // 设置新的防抖定时器（500ms 后更新数据库）
+    const timer = setTimeout(async () => {
+      const itemToUpdate = pendingUpdates.current.get(item.id);
+      if (!itemToUpdate) return;
+      
+      try {
+        await updateIngredient(itemToUpdate);
+        // 更新成功，清除待更新记录
+        pendingUpdates.current.delete(item.id);
+      } catch (error) {
+        // 更新失败，回滚到 store 中的原始数量
+        const originalItem = ingredients.find(i => i.id === item.id);
+        if (originalItem) {
+          setLocalIngredients(prev => 
+            prev.map(i => i.id === item.id ? originalItem : i)
+          );
+        }
+        
+        // 显示错误提示
+        alert(`更新失败：${error instanceof Error ? error.message : '未知错误'}`);
+        console.error('Failed to update ingredient quantity:', error);
+        
+        pendingUpdates.current.delete(item.id);
+      } finally {
+        updateTimers.current.delete(item.id);
+      }
+    }, 500);
+    
+    updateTimers.current.set(item.id, timer);
+  }, [updateIngredient, ingredients]);
+
+  const filtered = localIngredients.filter(i => i.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
     <div className="space-y-6">
@@ -104,9 +180,27 @@ const Fridge = () => {
               </div>
 
               <div className="flex items-end justify-between mt-4">
-                <div>
-                  <div className="text-2xl font-bold text-stone-700">
-                    {item.quantity} <span className="text-sm font-normal text-stone-500">{item.unit}</span>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <div className="text-2xl font-bold text-stone-700">
+                      {item.quantity} <span className="text-sm font-normal text-stone-500">{item.unit}</span>
+                    </div>
+                    <div className="flex gap-1">
+                      <button 
+                        onClick={() => handleQuantityChange(item, -1)}
+                        className="p-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-600 hover:text-stone-800 transition-colors active:scale-95"
+                        title="减少数量"
+                      >
+                        <Minus size={14} />
+                      </button>
+                      <button 
+                        onClick={() => handleQuantityChange(item, 1)}
+                        className="p-1 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-600 hover:text-emerald-700 transition-colors active:scale-95"
+                        title="增加数量"
+                      >
+                        <Plus size={14} />
+                      </button>
+                    </div>
                   </div>
                   {isLowStock && (
                     <div className="flex items-center text-xs text-amber-500 mt-1 font-medium">
