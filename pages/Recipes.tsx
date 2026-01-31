@@ -33,6 +33,9 @@ const Recipes = () => {
   const [importError, setImportError] = useState('');
   const [isImporting, setIsImporting] = useState(false);
   const [simulatedProgress, setSimulatedProgress] = useState(0);
+  
+  // Save state
+  const [isSaving, setIsSaving] = useState(false);
 
   // User profiles cache
   const [userProfiles, setUserProfiles] = useState<Map<string, UserProfile>>(new Map());
@@ -68,6 +71,8 @@ const Recipes = () => {
   const handleSaveRecipe = async () => {
     if (!editingRecipe?.name) return alert('请输入菜谱名称');
     
+    setIsSaving(true);
+    
     // Ensure arrays exist
     const finalRecipe = {
       ...editingRecipe,
@@ -79,8 +84,10 @@ const Recipes = () => {
     try {
       if (editingRecipe.id) {
         await updateRecipe(finalRecipe);
+        showToast('菜谱更新成功！', 'success');
       } else {
         await addRecipe(finalRecipe);
+        showToast('菜谱创建成功！', 'success');
       }
       // 刷新数据以确保显示最新的食材信息
       await refresh();
@@ -88,7 +95,9 @@ const Recipes = () => {
       setEditingRecipe(null);
     } catch (error) {
       console.error('保存菜谱失败:', error);
-      alert('保存失败，请重试');
+      showToast('保存失败，请重试', 'error');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -474,7 +483,9 @@ const Recipes = () => {
               <Button variant="secondary" onClick={() => { setView('list'); setEditingRecipe(null); }}>取消</Button>
               <h1 className="text-2xl font-bold">{editingRecipe?.id ? '编辑菜谱' : '创建菜谱'}</h1>
            </div>
-           <Button onClick={handleSaveRecipe}>保存菜谱</Button>
+           <Button onClick={handleSaveRecipe} disabled={isSaving}>
+             {isSaving ? '保存中...' : '保存菜谱'}
+           </Button>
         </div>
 
         {/* Basic Info */}
