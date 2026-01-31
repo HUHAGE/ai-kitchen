@@ -3,7 +3,7 @@ import { useStore } from '../store';
 import { User, Edit2, Save, X, ChefHat } from 'lucide-react';
 import { authService } from '../services/auth.service';
 import GuestPrompt from '../components/GuestPrompt';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { usersService, UserProfile } from '../services/users.service';
 import { recipesService } from '../services/recipes.service';
 import { Recipe } from '../types';
@@ -11,6 +11,7 @@ import AvatarUpload from '../components/AvatarUpload';
 
 const Profile = () => {
   const { userId } = useParams<{ userId?: string }>();
+  const navigate = useNavigate();
   const { user, myRecipes, showToast, refresh, recipes } = useStore();
   const [isEditing, setIsEditing] = useState(false);
   const [displayName, setDisplayName] = useState('');
@@ -296,6 +297,7 @@ const Profile = () => {
               <div
                 key={recipe.id}
                 className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => navigate(`/cooking/${recipe.id}`)}
               >
                 <div className="h-48 overflow-hidden bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center">
                   <img

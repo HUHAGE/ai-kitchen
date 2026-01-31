@@ -193,33 +193,58 @@ interface RecipeRecCardProps {
   color: 'primary' | 'red' | 'green';
 }
 
-const RecipeRecCard: React.FC<RecipeRecCardProps> = ({ recipe, onCook, reason, color }) => (
-  <GlassCard className="flex flex-col h-full group p-0 overflow-hidden border-0 ring-1 ring-white/50">
-    <div className="relative h-48 overflow-hidden bg-stone-100">
-      <img 
-        src={recipe.image || '/logo.jpg'} 
-        alt={recipe.name} 
-        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" 
-      />
-      <div className="absolute top-3 right-3 shadow-sm">
-        <Badge color={color}>{reason}</Badge>
+const RecipeRecCard: React.FC<RecipeRecCardProps> = ({ recipe, onCook, reason, color }) => {
+  const navigate = useNavigate();
+
+  return (
+    <GlassCard className="flex flex-col h-full group p-0 overflow-hidden border-0 ring-1 ring-white/50">
+      <div 
+        className="relative h-48 overflow-hidden bg-stone-100 cursor-pointer"
+        onClick={() => navigate(`/cooking/${recipe.id}`)}
+      >
+        <img 
+          src={recipe.image || '/logo.jpg'} 
+          alt={recipe.name} 
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" 
+        />
+        <div className="absolute top-3 right-3 shadow-sm">
+          <Badge color={color}>{reason}</Badge>
+        </div>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-60"></div>
+        <div className="absolute bottom-3 left-3 text-white">
+          <h3 className="font-bold text-lg leading-tight shadow-black drop-shadow-md">{recipe.name}</h3>
+        </div>
       </div>
-      <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-60"></div>
-      <div className="absolute bottom-3 left-3 text-white">
-        <h3 className="font-bold text-lg leading-tight shadow-black drop-shadow-md">{recipe.name}</h3>
+      <div className="flex-1 p-5 flex flex-col">
+        <p className="text-stone-500 text-sm line-clamp-2 mb-4 leading-relaxed">{recipe.description}</p>
+        <div className="flex gap-2 mt-auto">
+          <Badge color="stone">{recipe.difficulty}星难度</Badge>
+          <Badge color="stone">{recipe.steps.reduce((a:number, b:any) => a + b.duration, 0)}分钟</Badge>
+        </div>
+        <div className="flex gap-2 mt-5">
+          <Button 
+            onClick={() => navigate(`/cooking/${recipe.id}`)} 
+            variant="outline" 
+            size="sm" 
+            className="flex-1"
+          >
+            查看详情
+          </Button>
+          <Button 
+            onClick={(e) => {
+              e.stopPropagation();
+              onCook();
+            }} 
+            variant="secondary" 
+            size="sm" 
+            className="flex-1 group-hover:bg-emerald-50 group-hover:text-emerald-700 group-hover:border-emerald-200 transition-colors"
+          >
+            加入菜单
+          </Button>
+        </div>
       </div>
-    </div>
-    <div className="flex-1 p-5 flex flex-col">
-      <p className="text-stone-500 text-sm line-clamp-2 mb-4 leading-relaxed">{recipe.description}</p>
-      <div className="flex gap-2 mt-auto">
-        <Badge color="stone">{recipe.difficulty}星难度</Badge>
-        <Badge color="stone">{recipe.steps.reduce((a:number, b:any) => a + b.duration, 0)}分钟</Badge>
-      </div>
-      <Button onClick={onCook} variant="secondary" size="sm" className="w-full mt-5 group-hover:bg-emerald-50 group-hover:text-emerald-700 group-hover:border-emerald-200 transition-colors">
-        加入今日菜单 <ChevronRight size={14} className="ml-1 opacity-50 group-hover:opacity-100" />
-      </Button>
-    </div>
-  </GlassCard>
-);
+    </GlassCard>
+  );
+};
 
 export default Dashboard;
