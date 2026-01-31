@@ -8,6 +8,64 @@ export interface UserProfile {
 }
 
 class UsersService {
+  // 上传头像到 Supabase Storage
+  async uploadAvatar(file: File, userId: string): Promise<string> {
+    try {
+      // 生成文件名：{userId}/avatar.jpg
+      const fileExt = file.name.split('.').pop() || 'jpg';
+      const fileName = `${userId}/avatar.${fileExt}`;
+      const filePath = fileName;
+
+      // 删除旧头像（如果存在）
+      const { data: existingFiles } = await supabase.storage
+        .from('avatars')
+        .list(userId);
+
+      if (existingFiles && existingFiles.length > 0) {
+        const filesToRemove = existingFiles.map(f => `${userId}/${f.name}`);
+        await supabase.storage.from('avatars').remove(filesToRemove);
+      }
+
+      // 上传新头像
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true,
+        });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      // 获取公开访问 URL
+      const { data } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      return data.publicUrl;
+    } catch (error: any) {
+      console.error('Error uploading avatar:', error);
+      throw new Error(error.message || '头像上传失败');
+    }
+  }
+
+  // 删除头像
+  async deleteAvatar(userId: string): Promise<void> {
+    try {
+      const { data: files } = await supabase.storage
+        .from('avatars')
+        .list(userId);
+
+      if (files && files.length > 0) {
+        const filesToRemove = files.map(f => `${userId}/${f.name}`);
+        await supabase.storage.from('avatars').remove(filesToRemove);
+      }
+    } catch (error) {
+      console.error('Error deleting avatar:', error);
+      throw new Error('删除头像失败');
+    }
+  }
   // 根据用户ID获取用户信息（从公开的 kc_profiles 表查询）
   async getUserById(userId: string): Promise<UserProfile | null> {
     try {

@@ -7,6 +7,7 @@ import { useParams } from 'react-router-dom';
 import { usersService, UserProfile } from '../services/users.service';
 import { recipesService } from '../services/recipes.service';
 import { Recipe } from '../types';
+import AvatarUpload from '../components/AvatarUpload';
 
 const Profile = () => {
   const { userId } = useParams<{ userId?: string }>();
@@ -16,6 +17,7 @@ const Profile = () => {
   const [bio, setBio] = useState('');
   const [avatar, setAvatar] = useState('');
   const [loading, setLoading] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   
   // 查看其他用户的状态
   const [viewingUser, setViewingUser] = useState<UserProfile | null>(null);
@@ -64,11 +66,32 @@ const Profile = () => {
 
     try {
       setLoading(true);
+
+      // 如果有新上传的头像文件，先上传
+      let finalAvatarUrl = avatar;
+      const avatarFile = (window as any).__avatarFile;
+      
+      if (avatarFile) {
+        setUploadingAvatar(true);
+        try {
+          finalAvatarUrl = await usersService.uploadAvatar(avatarFile, user.id);
+          // 清除临时文件
+          (window as any).__avatarFile = null;
+        } catch (error: any) {
+          showToast(error.message || '头像上传失败', 'error');
+          setUploadingAvatar(false);
+          setLoading(false);
+          return;
+        }
+        setUploadingAvatar(false);
+      }
+
       await authService.updateProfile({
         displayName,
-        avatar,
+        avatar: finalAvatarUrl,
         bio,
       });
+      
       showToast('个人信息更新成功', 'success');
       setIsEditing(false);
       await refresh();
@@ -85,7 +108,17 @@ const Profile = () => {
       setBio(user.bio || '');
       setAvatar(user.avatar || '');
     }
+    // 清除临时文件
+    (window as any).__avatarFile = null;
     setIsEditing(false);
+  };
+
+  const handleAvatarUploadSuccess = (previewUrl: string) => {
+    setAvatar(previewUrl);
+  };
+
+  const handleAvatarUploadError = (error: string) => {
+    showToast(error, 'error');
   };
 
   // 查看其他用户时，游客也可以访问
@@ -140,11 +173,11 @@ const Profile = () => {
             <div className="flex gap-2">
               <button
                 onClick={handleSave}
-                disabled={loading}
+                disabled={loading || uploadingAvatar}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 text-white hover:bg-emerald-600 transition-colors disabled:opacity-50"
               >
                 <Save size={18} />
-                <span>{loading ? '保存中...' : '保存'}</span>
+                <span>{uploadingAvatar ? '上传中...' : loading ? '保存中...' : '保存'}</span>
               </button>
               <button
                 onClick={handleCancel}
@@ -161,25 +194,23 @@ const Profile = () => {
         <div className="flex flex-col md:flex-row gap-8">
           {/* 头像 */}
           <div className="flex flex-col items-center">
-            <div className="w-32 h-32 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white overflow-hidden">
-              {(isViewingOther ? viewingUser?.avatar : avatar) ? (
-                <img src={isViewingOther ? viewingUser?.avatar : avatar} alt={isViewingOther ? viewingUser?.displayName : displayName} className="w-full h-full object-cover" />
-              ) : (
-                <User size={48} />
-              )}
-            </div>
-            {!isViewingOther && isEditing && (
-              <div className="mt-4 w-full">
-                <label className="block text-sm font-medium text-stone-700 mb-2">
-                  头像 URL
-                </label>
-                <input
-                  type="text"
-                  value={avatar}
-                  onChange={(e) => setAvatar(e.target.value)}
-                  placeholder="输入头像图片链接"
-                  className="w-full px-3 py-2 rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
+            {!isViewingOther && isEditing ? (
+              <AvatarUpload
+                currentAvatar={avatar}
+                onUploadSuccess={handleAvatarUploadSuccess}
+                onUploadError={handleAvatarUploadError}
+              />
+            ) : (
+              <div className="w-32 h-32 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white overflow-hidden">
+                {(isViewingOther ? viewingUser?.avatar : avatar) ? (
+                  <img 
+                    src={isViewingOther ? viewingUser?.avatar : avatar} 
+                    alt={isViewingOther ? viewingUser?.displayName : displayName} 
+                    className="w-full h-full object-cover" 
+                  />
+                ) : (
+                  <User size={48} />
+                )}
               </div>
             )}
           </div>
