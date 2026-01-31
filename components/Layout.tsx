@@ -15,12 +15,20 @@ const Layout = () => {
   }, [user]);
 
   const navItems = [
-    { to: '/', icon: Home, label: '首页' },
-    { to: '/fridge', icon: Refrigerator, label: '我的冰箱' },
-    { to: '/recipes', icon: ChefHat, label: '菜谱大全' },
-    { to: '/plan', icon: Calendar, label: '今日计划' },
-    { to: '/profile', icon: UserCircle, label: '我的主页' },
+    { to: '/', icon: Home, label: '首页', guestVisible: false },
+    { to: '/fridge', icon: Refrigerator, label: '我的冰箱', guestVisible: false },
+    { to: '/recipes', icon: ChefHat, label: '菜谱大全', guestVisible: true },
+    { to: '/plan', icon: Calendar, label: '今日计划', guestVisible: false },
+    { to: '/profile', icon: UserCircle, label: '我的主页', guestVisible: false },
   ];
+
+  // 根据用户状态过滤菜单项
+  const visibleNavItems = navItems.filter(item => {
+    if (!user || user.isGuest) {
+      return item.guestVisible;
+    }
+    return true;
+  });
 
   const handleLogout = async () => {
     try {
@@ -50,7 +58,7 @@ const Layout = () => {
           </h1>
         </div>
         <nav className="flex-1 px-6 space-y-2 mt-2">
-          {navItems.map((item) => (
+          {visibleNavItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -126,7 +134,7 @@ const Layout = () => {
 
       {/* Mobile Bottom Nav */}
       <nav className="md:hidden fixed bottom-6 left-6 right-6 h-16 glass-panel rounded-full shadow-xl shadow-stone-200/50 z-50 px-6 flex justify-between items-center ring-1 ring-white/80">
-        {navItems.map((item) => (
+        {visibleNavItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}

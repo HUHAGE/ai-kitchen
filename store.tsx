@@ -445,8 +445,16 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const missing: { name: string; needed: number }[] = [];
 
+    // 只处理关联了冰箱食材的项（ingredient_id 不为空）
+    const linkedIngredients = recipe.ingredients.filter(ri => ri.ingredientId && !ri.isManual);
+    
+    if (linkedIngredients.length === 0) {
+      // 如果没有关联冰箱的食材，直接返回成功
+      return { success: true, missing: [] };
+    }
+
     // Check stock first
-    for (const ri of recipe.ingredients) {
+    for (const ri of linkedIngredients) {
       const ing = ingredients.find((i) => i.id === ri.ingredientId);
       if (!ing) continue;
       if (ing.quantity < ri.amount) {
@@ -462,7 +470,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       const newIngredients: Ingredient[] = [];
       for (const ing of ingredients) {
-        const usage = recipe.ingredients.find((ri) => ri.ingredientId === ing.id);
+        const usage = linkedIngredients.find((ri) => ri.ingredientId === ing.id);
         if (usage) {
           const newQuantity = Math.max(0, ing.quantity - usage.amount);
           await ingredientsService.update(ing.id, { quantity: newQuantity });

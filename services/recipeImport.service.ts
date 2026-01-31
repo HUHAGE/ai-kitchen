@@ -54,33 +54,16 @@ export const recipeImportService = {
         warnings.push(`创建了新分类: ${parsed.category}`);
       }
 
-      // 2. 处理食材（自动创建不存在的食材）
-      let allIngredients = await ingredientsService.getAll();
+      // 2. 处理食材（直接使用手动输入，不关联冰箱）
       const recipeIngredients: Omit<RecipeIngredientInsert, 'recipe_id'>[] = [];
       
       for (const ing of parsed.ingredients) {
-        let existingIng = allIngredients.find(i => i.name === ing.name);
-        
-        if (!existingIng) {
-          // 自动创建不存在的食材，数量设为0
-          const newIng = await ingredientsService.create({
-            name: ing.name,
-            type: 'main', // 默认为主料
-            unit: ing.unit || '个',
-            quantity: 0, // 数量为0，表示缺货
-            threshold: 1,
-            storage: 'refrigerated', // 默认冷藏
-          });
-          existingIng = newIng;
-          allIngredients.push(newIng); // 更新本地列表
-          warnings.push(`自动创建了新食材: ${ing.name} (数量为0，需要补货)`);
-        }
-        
         recipeIngredients.push({
-          ingredient_id: existingIng.id,
+          ingredient_id: null, // 不关联冰箱食材
           quantity: parseFloat(ing.amount) || 0,
-          unit: ing.unit || existingIng.unit,
+          unit: ing.unit || '个',
           optional: ing.optional,
+          name: ing.name, // 直接保存食材名称
         });
       }
 

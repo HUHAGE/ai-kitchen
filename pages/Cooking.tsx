@@ -102,7 +102,7 @@ const Cooking = () => {
         </div>
         <h1 className="text-3xl font-bold text-stone-800">大功告成！</h1>
         <p className="text-stone-500 max-w-md">
-          {recipe.name} 制作完成，食材库存已自动更新。尽情享受美味吧！
+          {recipe.name} 制作完成，尽情享受美味吧！
         </p>
         <div className="flex gap-4">
           <Button variant="secondary" onClick={() => navigate('/')}>返回首页</Button>

@@ -45,13 +45,16 @@ const MealPlanner = () => {
             const recipe = recipes.find(r => r.id === item.recipeId);
             if (!recipe) return null;
 
-            // Check stock status for display
+            // Check stock status for display (只检查关联了冰箱的食材)
             let missingStock: string[] = [];
             if (!item.completed) {
                recipe.ingredients.forEach(ri => {
-                  const ing = ingredients.find(i => i.id === ri.ingredientId);
-                  if (!ing || ing.quantity < ri.amount) {
-                     missingStock.push(`${ing?.name || '未知'} (缺${ri.amount - (ing?.quantity || 0)})`);
+                  // 只检查关联了冰箱食材的项
+                  if (ri.ingredientId && !ri.isManual) {
+                    const ing = ingredients.find(i => i.id === ri.ingredientId);
+                    if (!ing || ing.quantity < ri.amount) {
+                       missingStock.push(`${ing?.name || ri.name || '未知'} (缺${ri.amount - (ing?.quantity || 0)})`);
+                    }
                   }
                });
             }

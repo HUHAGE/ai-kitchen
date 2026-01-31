@@ -1,13 +1,13 @@
 import React, { useMemo } from 'react';
 import { useStore } from '../store';
 import { GlassCard, Button, Badge } from '../components/ui';
-import { Clock, AlertCircle, ChefHat, Leaf, ChevronRight, Sparkles, Sun, Users } from 'lucide-react';
-import { differenceInDays, parseISO, isBefore } from 'date-fns';
+import { Clock, AlertCircle, ChefHat, Leaf, ChevronRight, Sun, Users } from 'lucide-react';
+import { differenceInDays, parseISO } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { useOnlineUsers } from '../lib/useOnlineUsers';
 
 const Dashboard = () => {
-  const { ingredients, recipes, addToMealPlan, showToast } = useStore();
+  const { user, ingredients, recipes, addToMealPlan, showToast } = useStore();
   const navigate = useNavigate();
   const onlineCount = useOnlineUsers();
 
@@ -27,7 +27,11 @@ const Dashboard = () => {
   // --- Logic: Recommendations ---
   const perfectMatchRecipes = useMemo(() => {
     return recipes.filter(recipe => {
-      return recipe.ingredients.every(ri => {
+      // 只检查关联了冰箱的食材
+      const linkedIngredients = recipe.ingredients.filter(ri => ri.ingredientId && !ri.isManual);
+      if (linkedIngredients.length === 0) return false; // 如果没有关联冰箱的食材，不推荐
+      
+      return linkedIngredients.every(ri => {
         const stock = ingredients.find(i => i.id === ri.ingredientId);
         return stock && stock.quantity >= ri.amount;
       });
@@ -45,7 +49,8 @@ const Dashboard = () => {
     if (expiringIngredients.length === 0) return [];
     const expiringIds = expiringIngredients.map(i => i.id);
     return recipes.filter(r => {
-      return r.ingredients.some(ri => expiringIds.includes(ri.ingredientId));
+      // 只检查关联了冰箱的食材
+      return r.ingredients.some(ri => ri.ingredientId && !ri.isManual && expiringIds.includes(ri.ingredientId));
     }).slice(0, 3);
   }, [recipes, expiringIngredients]);
 

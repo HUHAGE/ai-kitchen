@@ -49,6 +49,7 @@ export interface RecipeIngredientInsert {
   quantity: number;
   unit: string;
   optional?: boolean;
+  name?: string | null; // 手动输入的食材名称
 }
 
 export interface RecipeStep {

@@ -125,11 +125,11 @@ export function fromRecipe(recipe: any) {
 export function fromRecipeIngredients(recipe: any) {
   return recipe.ingredients.map((ing: any) => ({
     recipe_id: recipe.id,
-    ingredient_id: ing.ingredientId || null,
+    ingredient_id: ing.isManual ? null : (ing.ingredientId || null),
     quantity: ing.amount,
-    unit: ing.unit || '', // 使用手动输入的单位或从食材获取
+    unit: ing.unit || '',
     optional: false,
-    name: ing.isManual ? ing.name : null, // 如果是手动输入，保存食材名称
+    name: ing.isManual ? ing.name : null, // 只有手动输入时才保存名称
   }));
 }
 

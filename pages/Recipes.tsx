@@ -519,105 +519,62 @@ const Recipes = () => {
         <GlassCard>
           <div className="flex justify-between mb-4">
             <h3 className="font-bold text-lg">所需食材</h3>
-            <div className="flex gap-2">
-              <Button size="sm" variant="secondary" onClick={() => setEditingRecipe({ 
-                ...editingRecipe, 
-                ingredients: [...(editingRecipe?.ingredients || []), { 
-                  ingredientId: '', 
-                  amount: 1, 
-                  name: '', 
-                  unit: '', 
-                  isManual: true 
-                }] 
-              })}>手动输入</Button>
-              <Button size="sm" onClick={() => setEditingRecipe({ 
-                ...editingRecipe, 
-                ingredients: [...(editingRecipe?.ingredients || []), { 
-                  ingredientId: ingredients[0]?.id || '', 
-                  amount: 1,
-                  isManual: false
-                }] 
-              })}>从冰箱选择</Button>
-            </div>
+            <Button size="sm" onClick={() => setEditingRecipe({ 
+              ...editingRecipe, 
+              ingredients: [...(editingRecipe?.ingredients || []), { 
+                ingredientId: '', 
+                amount: 1, 
+                name: '', 
+                unit: '', 
+                isManual: true 
+              }] 
+            })}>添加食材</Button>
           </div>
           <div className="space-y-3">
             {editingRecipe?.ingredients?.map((ri, index) => (
               <div key={index} className="flex gap-2 items-end">
-                {ri.isManual ? (
-                  // 手动输入模式
-                  <>
-                    <div className="flex-1">
-                      <Input 
-                        label={index === 0 ? "食材名称" : ""} 
-                        placeholder="例如：鸡蛋"
-                        value={ri.name || ''} 
-                        onChange={e => {
-                          const newIngs = [...(editingRecipe.ingredients || [])];
-                          newIngs[index].name = e.target.value;
-                          setEditingRecipe({ ...editingRecipe, ingredients: newIngs });
-                        }} 
-                      />
-                    </div>
-                    <div className="w-24">
-                      <Input 
-                        type="number" 
-                        label={index === 0 ? "数量" : ""} 
-                        value={ri.amount} 
-                        onChange={e => {
-                          const newIngs = [...(editingRecipe.ingredients || [])];
-                          newIngs[index].amount = parseFloat(e.target.value);
-                          setEditingRecipe({ ...editingRecipe, ingredients: newIngs });
-                        }} 
-                      />
-                    </div>
-                    <div className="w-20">
-                      <Input 
-                        label={index === 0 ? "单位" : ""} 
-                        placeholder="个"
-                        value={ri.unit || ''} 
-                        onChange={e => {
-                          const newIngs = [...(editingRecipe.ingredients || [])];
-                          newIngs[index].unit = e.target.value;
-                          setEditingRecipe({ ...editingRecipe, ingredients: newIngs });
-                        }} 
-                      />
-                    </div>
-                  </>
-                ) : (
-                  // 从冰箱选择模式
-                  <>
-                    <Select 
-                      className="flex-1" 
-                      label={index === 0 ? "选择食材" : ""} 
-                      value={ri.ingredientId} 
-                      onChange={e => {
-                        const newIngs = [...(editingRecipe.ingredients || [])];
-                        newIngs[index].ingredientId = e.target.value;
-                        setEditingRecipe({ ...editingRecipe, ingredients: newIngs });
-                      }}
-                    >
-                      {ingredients.map(i => <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>)}
-                    </Select>
-                    <div className="w-24">
-                      <Input 
-                        type="number" 
-                        label={index === 0 ? "数量" : ""} 
-                        value={ri.amount} 
-                        onChange={e => {
-                          const newIngs = [...(editingRecipe.ingredients || [])];
-                          newIngs[index].amount = parseFloat(e.target.value);
-                          setEditingRecipe({ ...editingRecipe, ingredients: newIngs });
-                        }} 
-                      />
-                    </div>
-                  </>
-                )}
+                <div className="flex-1">
+                  <Input 
+                    label={index === 0 ? "食材名称" : ""} 
+                    placeholder="例如：鸡蛋"
+                    value={ri.name || ''} 
+                    onChange={e => {
+                      const newIngs = [...(editingRecipe.ingredients || [])];
+                      newIngs[index].name = e.target.value;
+                      setEditingRecipe({ ...editingRecipe, ingredients: newIngs });
+                    }} 
+                  />
+                </div>
+                <div className="w-24">
+                  <Input 
+                    type="number" 
+                    label={index === 0 ? "数量" : ""} 
+                    value={ri.amount} 
+                    onChange={e => {
+                      const newIngs = [...(editingRecipe.ingredients || [])];
+                      newIngs[index].amount = parseFloat(e.target.value);
+                      setEditingRecipe({ ...editingRecipe, ingredients: newIngs });
+                    }} 
+                  />
+                </div>
+                <div className="w-20">
+                  <Input 
+                    label={index === 0 ? "单位" : ""} 
+                    placeholder="个"
+                    value={ri.unit || ''} 
+                    onChange={e => {
+                      const newIngs = [...(editingRecipe.ingredients || [])];
+                      newIngs[index].unit = e.target.value;
+                      setEditingRecipe({ ...editingRecipe, ingredients: newIngs });
+                    }} 
+                  />
+                </div>
                 <Button variant="ghost" className="mb-1 text-red-400" onClick={() => {
                    setEditingRecipe({ ...editingRecipe, ingredients: editingRecipe.ingredients?.filter((_, i) => i !== index) });
                 }}><Trash2 size={18} /></Button>
               </div>
             ))}
-            {(!editingRecipe?.ingredients || editingRecipe.ingredients.length === 0) && <p className="text-stone-400 text-sm text-center py-4">暂无关联食材</p>}
+            {(!editingRecipe?.ingredients || editingRecipe.ingredients.length === 0) && <p className="text-stone-400 text-sm text-center py-4">暂无食材</p>}
           </div>
         </GlassCard>
 
